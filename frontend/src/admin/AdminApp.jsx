@@ -39,6 +39,8 @@ export default function AdminApp() {
   if (user === undefined) return <div className="p-10"><div className="skeleton h-40" /></div>;
   if (!user || user.role === "customer") return <Navigate to="/admin/login" replace />;
   const items = NAV.filter((n) => n[3].includes(user.role));
+  const can = (path) => items.some((n) => n[0] === path);
+  const G = (path, el) => (can(path) ? el : <Navigate to={user.role === "delivery" ? "/admin/orders" : "/admin"} replace />);
   const side = (
     <aside className="flex h-full w-64 flex-col bg-[#2a0f0f] text-white/80">
       <div className="flex items-center gap-2 border-b border-white/10 p-4"><img src="/logo.svg" alt="" className="h-9 w-9" /><div><p className="font-deva font-bold text-white">माऊली फर्निचर</p><p className="text-[10px] tracking-widest text-[#F5B800]">ADMIN PANEL</p></div></div>
@@ -60,11 +62,11 @@ export default function AdminApp() {
         <main className="p-4 sm:p-6"><Suspense fallback={<div className="skeleton h-60" />}>
           <Routes>
             <Route index element={home} />
-            <Route path="products" element={<Products />} /><Route path="products/new" element={<ProductForm />} /><Route path="products/:id" element={<ProductForm />} />
-            <Route path="inventory" element={<Inventory />} /><Route path="orders" element={<Orders />} /><Route path="pos" element={<POS />} />
-            <Route path="customers" element={<Customers />} /><Route path="manage" element={<Manage />} /><Route path="reviews" element={<Moderation />} />
-            <Route path="enquiries" element={<Enquiries />} /><Route path="notifications" element={<Notifications />} /><Route path="reports" element={<Reports />} />
-            <Route path="settings" element={<SettingsPage />} /><Route path="password" element={<ChangePassword />} />
+            <Route path="products" element={G("products", <Products />)} /><Route path="products/new" element={G("products", <ProductForm />)} /><Route path="products/:id" element={G("products", <ProductForm />)} />
+            <Route path="inventory" element={G("inventory", <Inventory />)} /><Route path="orders" element={<Orders />} /><Route path="pos" element={G("pos", <POS />)} />
+            <Route path="customers" element={G("customers", <Customers />)} /><Route path="manage" element={G("manage", <Manage />)} /><Route path="reviews" element={G("reviews", <Moderation />)} />
+            <Route path="enquiries" element={G("enquiries", <Enquiries />)} /><Route path="notifications" element={G("notifications", <Notifications />)} /><Route path="reports" element={G("reports", <Reports />)} />
+            <Route path="settings" element={G("settings", <SettingsPage />)} /><Route path="password" element={<ChangePassword />} />
           </Routes></Suspense></main>
       </div>
     </div>

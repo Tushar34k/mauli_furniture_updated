@@ -32,7 +32,7 @@ function OrderSheet({ id, onClose, onChange }) {
           {o.items.map((it) => <div key={it.product_id + it.variant} className="flex items-center gap-3"><img src={img(it.image)} alt="" className="h-12 w-12 rounded-lg object-cover" /><span className="flex-1">{it.name} {it.variant} <span className="text-gray-500">× {it.qty}</span><br /><span className="text-xs text-gray-500">{it.sku}</span></span><b>{inr(it.price * it.qty)}</b></div>)}
           <p className="text-right">Discount {inr(o.discount)} · Delivery {inr(o.delivery)} · GST {inr(o.gst_total)} · <b className="text-base">Total {inr(o.total)}</b></p>
           <div><p className="label">Update status</p><div className="flex flex-wrap gap-1.5">{FLOW.filter((s) => !isDel || ["out_for_delivery", "delivered"].includes(s)).map((s) => (
-            <button key={s} disabled={o.status === s || o.status === "cancelled"} onClick={() => run(() => api.put(`/admin/orders/${o.id}/status`, { status: s }), "Status updated")} className="chip bg-white capitalize hover:border-[#E8671B] disabled:opacity-40" data-testid={`set-status-${s}`}>{s.replace(/_/g, " ")}</button>))}
+            <button key={s} disabled={FLOW.indexOf(s) <= FLOW.indexOf(o.status) || o.status === "cancelled"} onClick={() => run(() => api.put(`/admin/orders/${o.id}/status`, { status: s }), "Status updated")} className="chip bg-white capitalize hover:border-[#E8671B] disabled:opacity-40" data-testid={`set-status-${s}`}>{s.replace(/_/g, " ")}</button>))}
             {!isDel && o.status !== "cancelled" && o.status !== "delivered" && <button onClick={() => window.confirm("Cancel order and restock?") && run(() => api.put(`/admin/orders/${o.id}/status`, { status: "cancelled" }), "Cancelled")} className="chip border-red-300 bg-white text-red-600" data-testid="set-status-cancelled">cancel</button>}</div></div>
           {!isDel && <div className="grid grid-cols-2 gap-2">
             <div><p className="label">Assign delivery</p><select value={o.assigned_to || ""} onChange={(e) => run(() => api.put(`/admin/orders/${o.id}`, { assigned_to: e.target.value }), "Assigned")} className="input" data-testid="assign-delivery-select"><option value="">—</option>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
@@ -40,10 +40,10 @@ function OrderSheet({ id, onClose, onChange }) {
           {!isDel && <div><p className="label">Internal notes</p><textarea value={note} onChange={(e) => setNote(e.target.value)} className="input min-h-[70px]" data-testid="order-notes" />
             <button onClick={() => run(() => api.put(`/admin/orders/${o.id}`, { notes: note }), "Notes saved")} className="btn-outline mt-2 !py-1.5" data-testid="save-notes-btn">Save notes</button></div>}
           {o.return_request && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3" data-testid="return-request-box"><b className="capitalize">{o.return_request.type} request</b> — {o.return_request.status}<br />{o.return_request.reason}
-            {mgr && <div className="mt-2 flex flex-wrap gap-1.5">{["approved", "rejected", "replaced", "refunded"].map((a) => <button key={a} onClick={() => run(() => api.post(`/admin/orders/${o.id}/return/${a}`), a)} className="chip bg-white capitalize" data-testid={`return-${a}`}>{a}</button>)}</div>}</div>}
+            {mgr && <div className="mt-2 flex flex-wrap gap-1.5">{({ requested: ["approved", "rejected"], approved: [o.return_request.type === "return" ? "refunded" : "replaced"] }[o.return_request.status] || []).map((a) => <button key={a} onClick={() => run(() => api.post(`/admin/orders/${o.id}/return/${a}`), a)} className="chip bg-white capitalize" data-testid={`return-${a}`}>{a}</button>)}</div>}</div>}
           <div className="flex gap-2"><button onClick={() => openFile(`/admin/orders/${o.id}/invoice`)} className="btn-secondary !py-2" data-testid="print-invoice-btn"><FileText size={15} />Invoice</button>
             <button onClick={() => openFile(`/admin/orders/${o.id}/packing-slip`)} className="btn-outline !py-2" data-testid="print-packing-slip-btn"><Package size={15} />Packing slip</button></div>
-          <div><p className="label">Timeline</p><Timeline o={o} /></div>
+          <div><p className="label">Timeline</p><Timeline o={o} en /></div>
         </div>}
       </SheetContent>
     </Sheet>

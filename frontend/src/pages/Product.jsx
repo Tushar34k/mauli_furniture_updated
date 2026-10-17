@@ -50,15 +50,14 @@ function PincodeCheck({ p }) {
 
 function ReviewForm({ pid, onDone }) {
   const { t } = useApp();
-  const [rating, setRating] = useState(5);
-  const [text, setText] = useState("");
+  const [rating, setRating] = useState(5);  const [text, setText] = useState("");
   const [photos, setPhotos] = useState([]);
   const upload = async (f) => {
     const fd = new FormData(); fd.append("file", f);
     try { const { data } = await api.post("/upload", fd); setPhotos((p) => [...p, data.url]); } catch (e) { toast.error(errMsg(e)); }
   };
   const submit = async () => {
-    try { await api.post(`/products/${pid}/reviews`, { rating, text, photos }); toast.success("Review submitted for approval"); onDone(); }
+    try { await api.post(`/products/${pid}/reviews`, { rating, text, photos }); toast.success(t("review_sent")); onDone(); }
     catch (e) { toast.error(errMsg(e)); }
   };
   return (
@@ -78,7 +77,7 @@ function ReviewsQA({ d, reload }) {
   const [show, setShow] = useState(false);
   const [q, setQ] = useState("");
   const ask = async () => {
-    try { await api.post(`/products/${d.product.id}/questions`, { question: q, name: user?.name || "Customer" }); toast.success("Question submitted"); setQ(""); }
+    try { await api.post(`/products/${d.product.id}/questions`, { question: q, name: user?.name || "Customer" }); toast.success(t("question_sent")); setQ(""); }
     catch (e) { toast.error(errMsg(e)); }
   };
   return (
@@ -183,7 +182,7 @@ export default function Product() {
       {d.fbt.length > 0 && <section className="container-x mt-10" data-testid="fbt-section"><h2 className="section-title mb-4">{t("fbt")}</h2>
         <div className="card flex flex-col items-center gap-4 p-5 sm:flex-row">{[p, ...d.fbt].map((x, k) => (
           <div key={x.id} className="flex items-center gap-3">{k > 0 && <span className="text-2xl text-[#E8671B]">+</span>}<img src={img(x.images[0])} alt="" className="h-20 w-20 rounded-xl object-cover" /><div className="max-w-[140px] text-xs"><p className="line-clamp-2 font-semibold">{L(x, "name")}</p><p>{inr(x.price)}</p></div></div>))}
-          <div className="sm:ml-auto text-center"><p className="text-lg font-bold">{inr(fbtTotal)}</p><button onClick={() => [p, ...d.fbt].forEach((x) => addToCart(x))} className="btn-primary mt-2" data-testid="fbt-add-all">{t("add_to_cart")} ({1 + d.fbt.length})</button></div></div></section>}
+          <div className="sm:ml-auto text-center"><p className="text-lg font-bold">{inr(fbtTotal)}</p><button onClick={() => [p, ...d.fbt].forEach((x) => addToCart(x, 1, x.variants?.[0]?.value || ""))} className="btn-primary mt-2" data-testid="fbt-add-all">{t("add_to_cart")} ({1 + d.fbt.length})</button></div></div></section>}
       <section className="container-x mt-10"><ReviewsQA d={d} reload={load} /></section>
       <Rail testid="similar-products" title={t("similar")} items={d.similar} link={`/products?category=${p.category}`} />
       <Rail testid="recently-viewed" title={t("recently_viewed")} items={recentItems} />

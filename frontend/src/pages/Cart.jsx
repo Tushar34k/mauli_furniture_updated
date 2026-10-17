@@ -27,7 +27,7 @@ export function PriceBox({ pr, children }) {
       <Row k={`${t("mrp")} total`} v={inr(pr.mrp_total)} cls="text-gray-500" />
       <Row k={t("subtotal")} v={inr(pr.subtotal)} id="summary-subtotal" />
       {pr.discount > 0 && <Row k={`${t("discount")} (${pr.coupon})`} v={`− ${inr(pr.discount)}`} cls="text-green-700" id="summary-discount" />}
-      <Row k={t("delivery")} v={pr.delivery ? inr(pr.delivery) : t("free_delivery")} id="summary-delivery" />
+      <Row k={t("delivery")} v={!pr.serviceable ? t("not_available") : pr.delivery ? inr(pr.delivery) : t("free_delivery")} id="summary-delivery" />
       <Row k={t("gst")} v={inr(pr.gst_total)} cls="text-gray-500" id="summary-gst" />
       <div className="mt-2 flex justify-between border-t pt-3 text-lg font-bold"><span>{t("total")}</span><span data-testid="summary-total">{inr(pr.total)}</span></div>
       <p className="mt-1 text-xs text-green-700">You save {inr(pr.mrp_total - pr.subtotal + pr.discount)}</p>

@@ -33,7 +33,7 @@ class GoogleSession(BaseModel):
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=80)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = Field(None, pattern=r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=120)
 
 
 class ChangePassword(BaseModel):

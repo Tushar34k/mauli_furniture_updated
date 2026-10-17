@@ -62,7 +62,7 @@ async def seed_users():
         elif role == "owner" and not verify_pw(pw, ex["password_hash"]) and not ex.get("pw_changed"):
             await db.users.update_one({"email": email}, {"$set": {"password_hash": hash_pw(pw)}})
     if not await db.users.find_one({"phone": "9999999999"}):
-        await db.users.insert_one({"id": "demo-customer", "phone": "9999999999", "name": "Demo Customer", "email": "demo@maulifurniture.test",
+        await db.users.insert_one({"id": "demo-customer", "phone": "9999999999", "name": "Demo Customer", "email": "demo@example.com",
                                    "role": "customer", "addresses": [{"id": uid(), "name": "Demo Customer", "phone": "9999999999",
                                    "line1": "Flat 12, Shivaji Nagar", "line2": "Near FC Road", "city": "Pune", "state": "Maharashtra", "pincode": "411005", "default": True}],
                                    "wishlist": [], "created_at": now()})

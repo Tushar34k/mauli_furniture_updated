@@ -123,6 +123,8 @@ async def add_review(pid: str, r: ReviewIn, user=Depends(get_user)):
     p = await db.products.find_one({"id": pid}, {"name": 1})
     if not p:
         raise HTTPException(404, "Product not found")
+    if await db.reviews.find_one({"product_id": pid, "user_id": user["id"]}):
+        raise HTTPException(400, "You have already reviewed this product")
     await db.reviews.insert_one({"id": uid(), "product_id": pid, "product_name": p["name"], "user_id": user["id"], "name": user.get("name") or "Customer",
                                  **r.model_dump(), "status": "pending", "created_at": now()})
     return {"ok": True, "message": "Review submitted for approval"}

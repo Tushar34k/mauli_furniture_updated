@@ -52,7 +52,8 @@ async def next_order_no(prefix="MFM"):
 
 
 async def adjust_stock(pid, delta, mtype, note, by, ref=""):
-    p = await db.products.find_one_and_update({"id": pid}, {"$inc": {"stock": delta, "sold": -delta if mtype == "sale" else 0}},
+    q = {"id": pid, "stock": {"$gte": -delta}} if mtype == "sale" else {"id": pid}
+    p = await db.products.find_one_and_update(q, {"$inc": {"stock": delta, "sold": -delta if mtype == "sale" else 0}},
                                               return_document=ReturnDocument.AFTER)
     if p:
         await db.stock_movements.insert_one({"id": uid(), "product_id": pid, "sku": p["sku"], "name": p["name"], "type": mtype, "qty": delta,
@@ -102,7 +103,7 @@ async def price_cart(body: CartIn, strict=False):
         if serviceable:
             delivery = info["charge"]
             eta = max([info["days"]] + [l["delivery_days"] for l in lines]) if lines else info["days"]
-    if subtotal >= s.get("free_delivery_above", 10000) or free_ship or body.payment_method == "store":
+    if serviceable and (subtotal >= s.get("free_delivery_above", 10000) or free_ship) or body.payment_method == "store":
         delivery = 0
     ratio = (subtotal - discount) / subtotal if subtotal else 1
     gst_total = round(sum(l["line_total"] * ratio * l["gst"] / (100 + l["gst"]) for l in lines), 2)
@@ -128,6 +129,8 @@ async def create_order(body: CheckoutIn, request: Request):
     s = await get_settings()
     if body.payment_method == "cod" and pr["total"] > s.get("cod_limit", 100000):
         raise HTTPException(400, "COD not available for this order value")
+    if body.payment_method == "cod" and not (await pincode_info(body.address.pincode)).get("cod", False):
+        raise HTTPException(400, "COD not available for this pincode")
     order = {
         "id": uid(), "order_no": await next_order_no(s.get("invoice_prefix", "MFM")), "user_id": (user or {}).get("id"), "channel": "online",
         "items": [{k: v for k, v in l.items() if k not in ("stock", "line_total", "delivery_days")} for l in pr["lines"]],
@@ -136,8 +139,13 @@ async def create_order(body: CheckoutIn, request: Request):
         "payment_method": body.payment_method, "payment_status": "pending", "status": "placed",
         "timeline": [{"status": "placed", "at": now(), "note": ""}], "assigned_to": "", "notes": "", "return_request": None, "created_at": now(),
     }
+    done = []
     for l in pr["lines"]:
-        await adjust_stock(l["product_id"], -l["qty"], "sale", "Online order", "customer", order["order_no"])
+        if not await adjust_stock(l["product_id"], -l["qty"], "sale", "Online order", "customer", order["order_no"]):
+            for d in done:
+                await adjust_stock(d["product_id"], d["qty"], "return", "Rollback", "system", order["order_no"])
+            raise HTTPException(400, f"{l['name']} just went out of stock")
+        done.append(l)
     payment = None
     if body.payment_method == "razorpay":
         kid, sec = razorpay_keys(s)

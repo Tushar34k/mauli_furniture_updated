@@ -84,7 +84,7 @@ function Profile() {
   };
   const del = async () => {
     if (!window.confirm("Delete your account permanently? This cannot be undone.")) return;
-    try { await api.delete("/auth/me"); logout(); toast.success("Account deleted"); nav("/"); } catch (e) { toast.error(errMsg(e)); }
+    try { await api.delete("/auth/me"); nav("/"); logout(); toast.success("Account deleted"); } catch (e) { toast.error(errMsg(e)); }
   };
   return (
     <div className="space-y-5" data-testid="profile-tab">
@@ -96,7 +96,7 @@ function Profile() {
       </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={share} className="btn-outline" data-testid="share-app-btn"><Share2 size={16} />{t("share_app")}</button>
-        <button onClick={() => { logout(); nav("/"); }} className="btn-outline" data-testid="logout-btn"><LogOut size={16} />{t("logout")}</button>
+        <button onClick={() => { nav("/"); logout(); }} className="btn-outline" data-testid="logout-btn"><LogOut size={16} />{t("logout")}</button>
         <button onClick={del} className="btn-ghost text-red-600" data-testid="delete-account-btn"><Trash2 size={16} />{t("delete_account")}</button>
       </div>
     </div>

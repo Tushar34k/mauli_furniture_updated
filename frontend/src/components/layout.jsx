@@ -148,7 +148,7 @@ export function Footer() {
       <div className="container-x relative grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div><Logo light /><p className="mt-4 text-sm leading-relaxed text-white/70">{t("trusted")} · {t("free_installation")} · {t("easy_returns")}</p></div>
         <div><h4 className="mb-3 !text-[#F5B800]">{t("categories")}</h4>
-          {["sofa", "bed", "dining", "wardrobe", "mattress"].map((c) => <Link key={c} to={`/products?category=${c}`} className="block py-1 text-sm capitalize hover:text-[#F5B800]">{c}</Link>)}</div>
+          {["sofa", "bed", "dining", "wardrobe", "mattress"].map((c) => <Link key={c} to={`/products?category=${c}`} className="block py-1 text-sm hover:text-[#F5B800]">{t(`cat_${c}`)}</Link>)}</div>
         <div><h4 className="mb-3 !text-[#F5B800]">Info</h4>
           {links.map(([k, to]) => <Link key={k} to={to} className="block py-1 text-sm hover:text-[#F5B800]" data-testid={`footer-link-${k}`}>{t(k)}</Link>)}
           <Link to="/blog" className="block py-1 text-sm hover:text-[#F5B800]">{t("blog")}</Link></div>

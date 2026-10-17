@@ -5,12 +5,14 @@ import { CheckCircle2, FileText, XCircle, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import api, { errMsg, img, inr, openFile } from "@/lib/api";
 import { useApp, useTitle } from "@/lib/store";
+import { translate } from "@/lib/i18n";
 import { PageSkeleton, Empty } from "@/components/shop";
 
 const FLOW = ["placed", "confirmed", "packed", "shipped", "out_for_delivery", "delivered"];
 
-export function Timeline({ o }) {
-  const { t } = useApp();
+export function Timeline({ o, en }) {
+  const { t: tt } = useApp();
+  const t = en ? (k) => translate("en", k) : tt;
   const at = Object.fromEntries((o.timeline || []).map((x) => [x.status, x.at]));
   if (o.status === "cancelled") return <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700" data-testid="order-cancelled">{t("cancelled")}</p>;
   const cur = FLOW.indexOf(o.status);
@@ -44,7 +46,7 @@ export default function OrderDetail() {
   if (!o) return <PageSkeleton />;
   return (
     <div className="container-x max-w-5xl py-6" data-testid="order-detail-page">
-      {sp.get("new") && <div className="card mb-5 flex items-center gap-4 border-green-200 bg-green-50 p-5 fade-up" data-testid="order-success">
+      {sp.get("new") && o.status !== "cancelled" && <div className="card mb-5 flex items-center gap-4 border-green-200 bg-green-50 p-5 fade-up" data-testid="order-success">
         <CheckCircle2 className="text-green-600" size={40} /><div><h1 className="text-xl !text-green-800">{t("order_placed")}</h1><p className="text-sm">#{o.order_no} · {inr(o.total)}</p></div></div>}
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="card space-y-4 p-5 lg:col-span-2">
@@ -60,7 +62,7 @@ export default function OrderDetail() {
             <div className="flex justify-between"><span>{t("delivery")}</span><span>{o.delivery ? inr(o.delivery) : t("free_delivery")}</span></div>
             <div className="flex justify-between text-gray-500"><span>{t("gst")}</span><span>{inr(o.gst_total)}</span></div>
             <div className="flex justify-between border-t pt-2 text-base font-bold"><span>{t("total")}</span><span>{inr(o.total)}</span></div></div>
-          <p className="text-sm"><b>{t("payment")}:</b> {o.payment_method.toUpperCase()} · <span data-testid="payment-status">{o.payment_status}</span></p>
+          <p className="text-sm"><b>{t("payment")}:</b> {o.payment_method.toUpperCase()} · <span data-testid="payment-status">{t(`pay_${o.payment_status}`)}</span></p>
           <p className="text-sm"><b>{t("address")}:</b> {o.address.name}, {o.address.line1} {o.address.line2}, {o.address.city} {o.address.pincode} · {o.address.phone}</p>
           {o.slot && <p className="text-sm"><b>Slot:</b> {o.slot} {o.delivery_date}</p>}
           <div className="flex flex-wrap gap-2 pt-2">

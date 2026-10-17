@@ -8,7 +8,7 @@ import { Rail, Countdown, Stars, PageSkeleton } from "@/components/shop";
 export const ICONS = { Sofa, BedDouble, UtensilsCrossed, DoorClosed, Briefcase, Archive, BedSingle, BookOpen, Lamp, TreePine };
 
 function Banners({ items }) {
-  const { L } = useApp();
+  const { L, t } = useApp();
   const [i, setI] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setI((x) => (x + 1) % items.length), 5000);
@@ -27,7 +27,7 @@ function Banners({ items }) {
           <span className="badge-deal w-fit">{b.subtitle && "OFFER"}</span>
           <h1 className="mt-3 text-3xl font-extrabold !text-white sm:text-5xl lg:text-6xl">{L(b, "title")}</h1>
           <p className="mt-2 text-sm text-white/85 sm:text-lg">{L(b, "subtitle")}</p>
-          <Link to={b.link || "/products"} className="btn-primary mt-5 w-fit" data-testid="banner-cta">Shop now →</Link>
+          <Link to={b.link || "/products"} className="btn-primary mt-5 w-fit" data-testid="banner-cta">{t("shop_now")}</Link>
         </div>
         <div className="absolute bottom-4 right-4 flex gap-2">
           <button onClick={() => setI((i - 1 + items.length) % items.length)} className="grid h-9 w-9 place-items-center rounded-full bg-white/85 hover:bg-white" data-testid="banner-prev"><ChevronLeft size={18} /></button>

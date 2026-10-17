@@ -107,7 +107,10 @@ async def save_upload(f: UploadFile, folder: str = 'media') -> str:
     d.mkdir(exist_ok=True, parents=True)
     ct = (f.content_type or '')
     if ct.startswith('image/'):
-        img = Image.open(io.BytesIO(data)).convert('RGB')
+        try:
+            img = Image.open(io.BytesIO(data)).convert('RGB')
+        except Exception:
+            raise HTTPException(400, "Invalid image file")
         img.thumbnail((1400, 1400))
         name = f"{uid()}.jpg"
         img.save(d / name, 'JPEG', quality=82, optimize=True)

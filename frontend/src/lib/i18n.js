@@ -27,6 +27,9 @@ const mr = {
   recently_viewed: "अलीकडे पाहिलेले", about: "आमच्याबद्दल", contact: "संपर्क", privacy: "गोपनीयता धोरण", terms: "नियम व अटी", refund: "परतावा धोरण", shipping: "शिपिंग धोरण",
   emi: "EMI व ऑफर्स", trusted: "विश्वासार्ह दर्जा", easy_returns: "सोपे रिटर्न", secure_pay: "सुरक्षित पेमेंट", all_products: "सर्व उत्पादने",
   login_sub: "OTP ने सुरक्षित लॉगिन करा", qty: "नग", living: "लिव्हिंग रूम", bedroom: "बेडरूम", dining_room: "डायनिंग रूम", office_room: "ऑफिस", kids: "मुलांची खोली", outdoor_room: "बाल्कनी व बाग",
+  shop_now: "आता खरेदी करा →", popular: "लोकप्रिय शोध", review_sent: "अभिप्राय मंजुरीसाठी पाठवला", question_sent: "प्रश्न पाठवला",
+  pay_pending: "बाकी", pay_paid: "भरले", pay_refund_pending: "परतावा प्रलंबित", pay_refunded: "परतावा दिला", not_available: "उपलब्ध नाही",
+  cat_sofa: "सोफा", cat_bed: "बेड", cat_dining: "डायनिंग", cat_wardrobe: "वॉर्डरोब", cat_office: "ऑफिस", cat_storage: "स्टोरेज", cat_mattress: "गादी", "cat_study-table": "स्टडी टेबल", cat_decor: "सजावट", cat_outdoor: "आउटडोअर",
 };
 
 const en = {
@@ -58,6 +61,9 @@ const en = {
   recently_viewed: "Recently viewed", about: "About Us", contact: "Contact", privacy: "Privacy Policy", terms: "Terms & Conditions", refund: "Return & Refund Policy", shipping: "Shipping Policy",
   emi: "EMI & Offers", trusted: "Trusted quality", easy_returns: "Easy returns", secure_pay: "Secure payments", all_products: "All products",
   login_sub: "Secure login with OTP", qty: "Qty", living: "Living Room", bedroom: "Bedroom", dining_room: "Dining Room", office_room: "Office", kids: "Kids Room", outdoor_room: "Balcony & Garden",
+  shop_now: "Shop now →", popular: "Popular searches", review_sent: "Review submitted for approval", question_sent: "Question submitted",
+  pay_pending: "Pending", pay_paid: "Paid", pay_refund_pending: "Refund pending", pay_refunded: "Refunded", not_available: "Not available",
+  cat_sofa: "Sofa", cat_bed: "Bed", cat_dining: "Dining", cat_wardrobe: "Wardrobe", cat_office: "Office", cat_storage: "Storage", cat_mattress: "Mattress", "cat_study-table": "Study Table", cat_decor: "Decor", cat_outdoor: "Outdoor",
 };
 
 export const DICT = { mr, en };

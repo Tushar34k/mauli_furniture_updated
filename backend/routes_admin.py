@@ -330,9 +330,11 @@ async def set_status(oid: str, body: StatusIn, u=Depends(ANY)):
         raise HTTPException(400, "Invalid status")
     if u["role"] == "delivery" and body.status not in ("out_for_delivery", "delivered"):
         raise HTTPException(403, "Delivery staff can only mark out for delivery / delivered")
+    if o["status"] in ("cancelled", "delivered"):
+        raise HTTPException(400, f"Order is already {o['status']}; use returns for delivered orders")
+    if body.status != "cancelled" and FLOW.index(body.status) <= FLOW.index(o["status"]):
+        raise HTTPException(400, "Status can only move forward")
     if body.status == "cancelled":
-        if o["status"] == "cancelled":
-            raise HTTPException(400, "Already cancelled")
         await cancel_and_restock(o, body.note or "Cancelled by store", u["name"])
         return {"ok": True}
     upd = {"status": body.status}
@@ -345,8 +347,8 @@ async def set_status(oid: str, body: StatusIn, u=Depends(ANY)):
 
 class OrderPatch(BaseModel):
     assigned_to: Optional[str] = None
-    notes: Optional[str] = None
-    payment_status: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+    payment_status: Optional[str] = Field(None, pattern=r"^(pending|paid|refund_pending|refunded)$")
 
 
 @router.put("/orders/{oid}")
@@ -360,8 +362,9 @@ async def patch_order(oid: str, body: OrderPatch, u=Depends(ALL)):
 async def handle_return(oid: str, action: str, u=Depends(MGR)):
     o = await _order(oid, u)
     rr = o.get("return_request") or {}
-    if action not in ("approved", "rejected", "refunded", "replaced") or not rr:
-        raise HTTPException(400, "Invalid action")
+    allowed = {"requested": ("approved", "rejected"), "approved": ("refunded",) if rr.get("type") == "return" else ("replaced",)}
+    if not rr or action not in allowed.get(rr.get("status"), ()):
+        raise HTTPException(400, f"Cannot mark '{action}' from '{rr.get('status')}'")
     rr["status"] = action
     upd = {"return_request": rr}
     if action == "approved" and rr.get("type") == "return":

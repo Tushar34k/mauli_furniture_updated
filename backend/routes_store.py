@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from rapidfuzz import fuzz
-from core import db, get_settings, rate_limit, client_ip, now, uid
+from core import db, get_settings, rate_limit, client_ip, now, uid, razorpay_keys
 
 router = APIRouter(prefix="/api")
 PUB = {"_id": 0, "purchase_price": 0, "supplier": 0}
@@ -37,9 +37,9 @@ async def pincode_info(pin: str):
 @router.get("/settings/public")
 async def public_settings():
     s = await get_settings()
-    for k in SECRET_KEYS:
+    s["razorpay_enabled"] = bool(razorpay_keys(s)[0])
+    for k in SECRET_KEYS + ("razorpay_key_id",):
         s.pop(k, None)
-    s["razorpay_enabled"] = bool((s.pop("razorpay_key_id", "") or os.environ.get("RAZORPAY_KEY_ID", "")).replace("placeholder", ""))
     return s
 
 

@@ -37,6 +37,8 @@ async def send(channels, title: str, message: str, user_id: str = None, phone: s
         if ch == "inapp":
             await db.notifications.insert_one({"id": uid(), "user_id": user_id, "title": title, "message": message, "read": False, "created_at": now()})
             continue
+        if event == "otp" and os.environ.get("OTP_MODE", "test") != "test":
+            message = "****** is your Mauli Furniture login OTP."
         log.info(f"[NOTIFY:{ch.upper()}:{status}] to={to} | {title} | {message}")
         await db.notification_logs.insert_one({"id": uid(), "channel": ch, "to": to, "title": title, "message": message,
                                                "event": event, "status": status, "created_at": now()})

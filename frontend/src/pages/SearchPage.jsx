@@ -15,7 +15,7 @@ export default function SearchPage() {
       <button onClick={voice.start} className={`btn-outline mt-5 w-full ${voice.on ? "animate-pulse" : ""}`} data-testid="search-page-voice"><Mic size={18} />{voice.on ? t("listening") : t("voice")}</button>
       {recent.length > 0 && <div className="mt-6"><p className="label">{t("recent")}</p>
         {recent.map((r) => <button key={r} onClick={() => nav(`/products?q=${encodeURIComponent(r)}`)} className="flex w-full items-center gap-2 border-b py-3 text-sm"><Clock size={15} className="text-gray-400" />{r}</button>)}</div>}
-      <div className="mt-6"><p className="label">Popular</p><div className="flex flex-wrap gap-2">
+      <div className="mt-6"><p className="label">{t("popular")}</p><div className="flex flex-wrap gap-2">
         {popular.map((p) => <button key={p} onClick={() => nav(`/products?q=${encodeURIComponent(p)}`)} className="chip bg-white hover:border-[#E8671B]">{p}</button>)}</div></div>
     </div>
   );

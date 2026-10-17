@@ -20,10 +20,10 @@ function Filters({ params, set, facets }) {
   const has = (k, v) => (params.get(k) || "").split(",").includes(String(v));
   return (
     <div data-testid="filters-panel">
-      <Group title={t("categories")}>{CATS.map((c) => <Chip key={c} id={`filter-cat-${c}`} on={has("category", c)} onClick={() => multi("category", c)}>{c}</Chip>)}</Group>
+      <Group title={t("categories")}>{CATS.map((c) => <Chip key={c} id={`filter-cat-${c}`} on={has("category", c)} onClick={() => multi("category", c)}>{t(`cat_${c}`)}</Chip>)}</Group>
       <div className="border-b py-4"><p className="label">{t("price")}</p>
-        <div className="mt-2 flex gap-2"><input className="input" type="number" placeholder="Min" defaultValue={params.get("min_price") || ""} onBlur={(e) => set("min_price", e.target.value)} data-testid="filter-min-price" />
-          <input className="input" type="number" placeholder="Max" defaultValue={params.get("max_price") || ""} onBlur={(e) => set("max_price", e.target.value)} data-testid="filter-max-price" /></div></div>
+        <div className="mt-2 flex gap-2"><input className="input" type="number" placeholder="Min" defaultValue={params.get("min_price") || ""} onBlur={(e) => set("min_price", e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} data-testid="filter-min-price" />
+          <input className="input" type="number" placeholder="Max" defaultValue={params.get("max_price") || ""} onBlur={(e) => set("max_price", e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} data-testid="filter-max-price" /></div></div>
       {[["material", t("material")], ["color", t("color")], ["brand", t("brand")]].map(([k, label]) => (
         <Group key={k} title={label}>{(facets[k] || []).map((v) => <Chip key={v} id={`filter-${k}-${v}`} on={has(k, v)} onClick={() => multi(k, v)}>{v}</Chip>)}</Group>))}
       <Group title={t("rating")}>{[4, 3].map((r) => <Chip key={r} id={`filter-rating-${r}`} on={params.get("rating") === String(r)} onClick={() => set("rating", params.get("rating") === String(r) ? "" : String(r))}>{r}★ +</Chip>)}</Group>
@@ -68,7 +68,8 @@ export default function Listing() {
   }, [loading, page, meta.pages, fetchPage]);
 
   const set = (k, v) => { const n = new URLSearchParams(params); if (v) n.set(k, v); else n.delete(k); setParams(n); };
-  const title = params.get("q") ? `"${params.get("q")}"` : params.get("category") ? params.get("category") : t("all_products");
+  const cat1 = (params.get("category") || "").split(",").filter(Boolean);
+  const title = params.get("q") ? `"${params.get("q")}"` : cat1.length ? cat1.map((c) => t(`cat_${c}`)).join(", ") : t("all_products");
   return (
     <div className="container-x py-6" data-testid="listing-page">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
