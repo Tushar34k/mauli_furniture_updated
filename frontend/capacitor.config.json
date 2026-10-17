@@ -1,0 +1,14 @@
+{
+  "appId": "com.maulifurniture.app",
+  "appName": "Mauli Furniture",
+  "webDir": "build",
+  "server": {
+    "url": "https://your-domain.com",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#FFFAF5", "showSpinner": false },
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
