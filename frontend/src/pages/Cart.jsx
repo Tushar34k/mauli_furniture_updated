@@ -83,7 +83,7 @@ export default function Cart() {
       {cart.length > 0 && <div className="space-y-4">
         <div className="card space-y-3 p-5">
           <p className="flex items-center gap-2 text-sm font-semibold"><Tag size={16} className="text-[#E8671B]" />{t("coupon")}</p>
-          <div className="flex gap-2"><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} className="input" placeholder="WELCOME10" data-testid="coupon-input" />
+          <div className="flex gap-2"><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} className="input" placeholder={t("coupon")} data-testid="coupon-input" />
             <button onClick={() => apply(coupon)} className="btn-secondary" data-testid="apply-coupon-btn">{t("apply")}</button></div>
           {pr?.coupon_msg && <p className={`text-xs ${pr.coupon ? "text-green-700" : "text-red-600"}`} data-testid="coupon-msg">{pr.coupon_msg}</p>}
           <div className="flex flex-wrap gap-2">{coupons.map((c) => <button key={c.code} onClick={() => apply(c.code)} title={c.description} className="chip border-dashed border-[#E8671B] bg-[#fff6ee] text-[#7A1F1F]" data-testid={`coupon-chip-${c.code}`}>{c.code}</button>)}</div>

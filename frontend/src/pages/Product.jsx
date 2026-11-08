@@ -49,7 +49,7 @@ function PincodeCheck({ p }) {
 }
 
 function ReviewForm({ pid, onDone }) {
-  const { t } = useApp();
+  const { t, settings } = useApp();
   const [rating, setRating] = useState(5);  const [text, setText] = useState("");
   const [photos, setPhotos] = useState([]);
   const upload = async (f) => {
@@ -65,7 +65,7 @@ function ReviewForm({ pid, onDone }) {
       <div className="flex gap-1">{[1, 2, 3, 4, 5].map((i) => <button key={i} onClick={() => setRating(i)} className={`text-2xl ${i <= rating ? "text-[#F5B800]" : "text-gray-300"}`} data-testid={`review-star-${i}`}>★</button>)}</div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} className="input min-h-[90px]" placeholder={t("write_review")} data-testid="review-text" />
       <div className="flex flex-wrap items-center gap-2">{photos.map((u) => <img key={u} src={img(u)} alt="" className="h-14 w-14 rounded-lg object-cover" />)}
-        <label className="btn-outline cursor-pointer !py-2"><Camera size={16} />{t("photo")}<input type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(e.target.files[0])} data-testid="review-photo-input" /></label></div>
+        {settings.upload_enabled && <label className="btn-outline cursor-pointer !py-2"><Camera size={16} />{t("photo")}<input type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(e.target.files[0])} data-testid="review-photo-input" /></label>}</div>
       <button onClick={submit} disabled={text.length < 3} className="btn-primary" data-testid="review-submit-btn">{t("submit")}</button>
     </div>
   );
@@ -142,7 +142,7 @@ function Info({ p }) {
       <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
         {[[Wrench, p.assembly === "diy" ? t("diy") : t("free_installation")], [ShieldCheck, `${t("warranty")}: ${p.warranty}`], [Truck, t("delivers_in", { d: p.delivery_days })], [CreditCard, t("emi")]].map(([I, s], k) => (
           <div key={k} className="flex items-center gap-2 rounded-xl bg-[#fbf3ea] p-3"><I size={17} className="shrink-0 text-[#E8671B]" />{s}</div>))}</div>
-      <p className="rounded-xl border border-dashed border-[#F5B800] bg-[#fffbeb] p-3 text-xs" data-testid="emi-info">{settings.emi_text}</p>
+      {settings.emi_text && <p className="rounded-xl border border-dashed border-[#F5B800] bg-[#fffbeb] p-3 text-xs" data-testid="emi-info">{settings.emi_text}</p>}
     </div>
   );
 }

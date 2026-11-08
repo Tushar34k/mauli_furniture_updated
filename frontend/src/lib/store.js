@@ -27,8 +27,10 @@ export function AppProvider({ children }) {
 
   const refreshMe = useCallback(async () => {
     if (!localStorage.getItem("mfm_token")) { setUser(null); return; }
-    try { const { data } = await api.get("/auth/me"); setUser(data); setWish(data.wishlist || []); }
-    catch { localStorage.removeItem("mfm_token"); setUser(null); }
+    try {
+      const { data } = await api.post("/auth/refresh");
+      localStorage.setItem("mfm_token", data.token); setUser(data.user); setWish(data.user.wishlist || []);
+    } catch { localStorage.removeItem("mfm_token"); setUser(null); }
   }, []);
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);

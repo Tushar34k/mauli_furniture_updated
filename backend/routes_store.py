@@ -37,7 +37,10 @@ async def pincode_info(pin: str):
 @router.get("/settings/public")
 async def public_settings():
     s = await get_settings()
+    import integrations as ig
     s["razorpay_enabled"] = bool(razorpay_keys(s)[0])
+    s["sms_enabled"] = bool(ig.sms_provider())
+    s["upload_enabled"] = bool(ig.storage_provider())
     for k in SECRET_KEYS + ("razorpay_key_id",):
         s.pop(k, None)
     return s
@@ -200,9 +203,15 @@ async def blog(slug: str):
 @router.get("/pages/{slug}")
 async def page(slug: str):
     p = await db.pages.find_one({"slug": slug, "active": True}, {"_id": 0})
-    if not p:
-        raise HTTPException(404, "Not found")
-    return p
+    if p:
+        return p
+    from seed_data import legal_pages
+    s = await get_settings()
+    vals = {k: s.get(k) or f"[{k.replace('_', ' ').title()} - set in Admin > Settings]" for k in ("shop_name", "address", "phone", "email", "timings", "whatsapp", "gst_number")}
+    for sl, t, tm, c in legal_pages(vals):
+        if sl == slug:
+            return {"id": sl, "slug": sl, "title": t, "title_mr": tm, "content": c, "active": True}
+    raise HTTPException(404, "Not found")
 
 
 @router.get("/sitemap.xml")

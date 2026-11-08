@@ -7,6 +7,7 @@ import api, { errMsg, img, inr, openFile } from "@/lib/api";
 import { useApp, useTitle } from "@/lib/store";
 import { translate } from "@/lib/i18n";
 import { PageSkeleton, Empty } from "@/components/shop";
+import { payWithRazorpay } from "@/pages/Checkout";
 
 const FLOW = ["placed", "confirmed", "packed", "shipped", "out_for_delivery", "delivered"];
 
@@ -67,8 +68,8 @@ export default function OrderDetail() {
           {o.slot && <p className="text-sm"><b>Slot:</b> {o.slot} {o.delivery_date}</p>}
           <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={() => openFile(`/orders/${o.id}/invoice${q}`)} className="btn-outline !py-2" data-testid="download-invoice-btn"><FileText size={16} />{t("invoice")}</button>
-            {o.payment_method === "razorpay" && o.payment_status === "pending" && !settings.razorpay_enabled && o.status !== "cancelled" &&
-              <button onClick={() => act(() => api.post(`/orders/${o.id}/pay/demo`), "Paid")} className="btn-primary !py-2" data-testid="retry-payment-btn">Pay now (Demo)</button>}
+            {o.payment_method === "razorpay" && ["pending", "failed"].includes(o.payment_status) && settings.razorpay_enabled && o.status !== "cancelled" &&
+              <button onClick={() => act(async () => { const { data } = await api.post(`/orders/${o.id}/pay/retry${q}`); await payWithRazorpay(data.payment, o.address, settings, async (r) => { await api.post(`/orders/${o.id}/pay/verify`, r); load(); }); }, "Opening payment")} className="btn-primary !py-2" data-testid="retry-payment-btn">Pay now</button>}
             {["placed", "confirmed", "packed"].includes(o.status) && <button onClick={() => window.confirm("Cancel this order?") && act(() => api.post(`/orders/${o.id}/cancel${q}`), "Order cancelled")} className="btn-ghost !py-2 text-red-600" data-testid="cancel-order-btn"><XCircle size={16} />{t("cancel")}</button>}
             {o.status === "delivered" && !o.return_request && !phone && <>
               <button onClick={() => setRet("return")} className="btn-ghost !py-2" data-testid="return-order-btn"><RotateCcw size={16} />{t("return")}</button>

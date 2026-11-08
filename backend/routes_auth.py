@@ -1,6 +1,6 @@
 import os
 import re
-import random
+import logging
 import httpx
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException, Depends
@@ -74,24 +74,34 @@ async def staff_login(body: StaffLogin, request: Request):
 
 @router.post("/otp/send")
 async def otp_send(body: OtpSend, request: Request):
+    import secrets
+    import integrations as ig
     phone = norm_phone(body.phone)
-    rate_limit(f"otp:{phone}", 5)
-    rate_limit(f"otpip:{client_ip(request)}", 15)
-    test = os.environ.get("OTP_MODE", "test") == "test"
-    code = "123456" if test else f"{random.randint(0, 999999):06d}"
+    if not ig.sms_provider():
+        raise HTTPException(503, "OTP login is not configured yet. Please use Google login. / OTP लॉगिन अजून सुरू नाही, कृपया Google ने लॉगिन करा.")
+    prev = await db.otps.find_one({"phone": phone})
+    if prev and (datetime.now(timezone.utc) - prev["created"].replace(tzinfo=timezone.utc)).total_seconds() < 60:
+        raise HTTPException(429, "Please wait 60 seconds before requesting a new OTP")
+    rate_limit(f"otp:{phone}", 5, 3600)
+    rate_limit(f"otpip:{client_ip(request)}", 20, 3600)
+    code = f"{secrets.randbelow(1000000):06d}"
     await db.otps.delete_many({"phone": phone})
     await db.otps.insert_one({"phone": phone, "hash": hash_pw(code), "tries": 0, "created": datetime.now(timezone.utc)})
-    if not test:
-        os.environ["SMS_MODE"] = "live"
-    await notify.send(["sms"], "OTP", f"{code} is your Mauli Furniture login OTP. Valid for 10 minutes.", phone=phone, event="otp")
-    return {"sent": True, "test_mode": test, "hint": "Test mode: use OTP 123456" if test else None}
+    try:
+        await ig.send_sms(phone, f"{code} is your login OTP. Valid for 10 minutes. Do not share it.", otp=code)
+    except Exception as e:
+        await db.otps.delete_many({"phone": phone})
+        logging.getLogger("auth").error(f"OTP send failed: {e}")
+        raise HTTPException(502, "Could not send OTP. Please try again later.")
+    return {"sent": True, "resend_after": 60}
 
 
 @router.post("/otp/verify")
-async def otp_verify(body: OtpVerify):
+async def otp_verify(body: OtpVerify, request: Request):
     phone = norm_phone(body.phone)
+    rate_limit(f"otpv:{client_ip(request)}", 30, 600)
     rec = await db.otps.find_one({"phone": phone})
-    if not rec or rec["tries"] >= 5:
+    if not rec or rec["tries"] >= 5 or (datetime.now(timezone.utc) - rec["created"].replace(tzinfo=timezone.utc)).total_seconds() > 600:
         raise HTTPException(400, "OTP expired. Please request a new one.")
     if not verify_pw(body.otp, rec["hash"]):
         await db.otps.update_one({"phone": phone}, {"$inc": {"tries": 1}})
@@ -101,7 +111,6 @@ async def otp_verify(body: OtpVerify):
     if not u:
         u = {"id": uid(), "phone": phone, "name": body.name or "", "email": "", "role": "customer", "addresses": [], "wishlist": [], "created_at": now()}
         await db.users.insert_one(dict(u))
-        await notify.send(["inapp"], "स्वागत आहे! Welcome", "Use code WELCOME10 for 10% off your first order.", user_id=u["id"])
     return auth_response(u)
 
 
@@ -126,6 +135,11 @@ async def me(user=Depends(get_user)):
     return user
 
 
+@router.post("/refresh")
+async def refresh(user=Depends(get_user)):
+    return auth_response(user)
+
+
 @router.put("/me")
 async def update_me(body: ProfileUpdate, user=Depends(get_user)):
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -139,7 +153,7 @@ async def change_password(body: ChangePassword, user=Depends(require())):
     full = await db.users.find_one({"id": user["id"]})
     if not verify_pw(body.old_password, full.get("password_hash", "")):
         raise HTTPException(400, "Current password is incorrect")
-    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_pw(body.new_password), "pw_changed": True}})
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_pw(body.new_password), "pw_changed": True, "must_change_password": False}})
     return {"ok": True}
 
 

@@ -84,6 +84,7 @@ const EMPTY = { name: "", name_mr: "", category: "sofa", brand: "", material: ""
   purchase_price: 0, price: "", mrp: "", gst: 18, stock: 0, reorder_level: 5, supplier: "", location: "", dimensions: "", weight: "", specs: {}, warranty: "1 Year", assembly: "free_installation", delivery_days: 5, is_deal: false, active: true };
 
 export function ProductForm() {
+  const { settings } = useApp();
   const { id } = useParams();
   const nav = useNavigate();
   const [f, setF] = useState(id ? null : EMPTY);
@@ -121,7 +122,8 @@ export function ProductForm() {
             <div key={u + i} className="relative"><img src={img(u)} alt="" className="h-20 w-20 rounded-xl object-cover" />{i === 0 && <span className="badge-deal absolute bottom-1 left-1 !text-[9px]">Main</span>}
               <button onClick={() => set("images", f.images.filter((_, k) => k !== i))} className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white" data-testid={`pf-remove-img-${i}`}><X size={12} /></button>
               {i > 0 && <button onClick={() => { const n = [...f.images]; [n[0], n[i]] = [n[i], n[0]]; set("images", n); }} className="absolute bottom-1 right-1 rounded bg-white/90 px-1 text-[9px]">Main</button>}</div>))}
-            <label className="grid h-20 w-20 cursor-pointer place-items-center rounded-xl border-2 border-dashed text-gray-400"><Upload /><input type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} data-testid="pf-image-upload" /></label></div>
+            <label className="grid h-20 w-20 cursor-pointer place-items-center rounded-xl border-2 border-dashed text-gray-400" title={settings.upload_enabled ? "Upload" : "Storage not configured - paste image URL"}><Upload /><input type="file" accept="image/*" multiple hidden disabled={!settings.upload_enabled} onChange={(e) => upload(e.target.files)} data-testid="pf-image-upload" /></label></div>
+            {!settings.upload_enabled && <p className="mt-1 text-xs text-amber-700">Image upload needs Cloudinary/S3 (Admin › Integrations). Paste image URLs below meanwhile.</p>}
             <div className="mt-2 flex gap-2"><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="or paste image URL" className="input" /><button onClick={() => { if (url) { set("images", [...f.images, url]); setUrl(""); } }} className="btn-outline">Add</button></div></div>
           <div><label className="label">Variants (colour / material / size)</label>{f.variants.map((v, i) => (
             <div key={i} className="mb-2 flex gap-2"><select value={v.type} onChange={(e) => set("variants", f.variants.map((x, k) => (k === i ? { ...x, type: e.target.value } : x)))} className="input !w-32"><option>size</option><option>colour</option><option>material</option></select>

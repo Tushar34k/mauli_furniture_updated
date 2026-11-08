@@ -5,7 +5,7 @@ from starlette.middleware.gzip import GZipMiddleware
 import os
 import logging
 from core import client, UPLOAD_DIR
-from seed import run_seed
+from seed import run_setup
 import routes_auth
 import routes_store
 import routes_account
@@ -22,7 +22,17 @@ app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads"
 
 @app.get("/api/")
 async def root():
-    return {"name": "Mauli Furniture Mall API", "status": "ok"}
+    return {"name": "Store API", "status": "ok"}
+
+
+@app.get("/api/health")
+async def health():
+    try:
+        await client.admin.command("ping")
+        return {"status": "ok", "db": "ok"}
+    except Exception:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"status": "degraded", "db": "down"}, status_code=503)
 
 
 @app.middleware("http")
@@ -31,6 +41,10 @@ async def security_headers(request: Request, call_next):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "SAMEORIGIN"
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    resp.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
+    if not request.url.path.startswith("/api/docs"):
+        resp.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; img-src 'self' data:"
     if request.url.path.startswith("/api/uploads/"):
         resp.headers["Cache-Control"] = "public, max-age=2592000"
     return resp
@@ -43,7 +57,7 @@ app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=orig
 
 @app.on_event("startup")
 async def startup():
-    await run_seed()
+    await run_setup()
 
 
 @app.on_event("shutdown")

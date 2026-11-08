@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook
 from core import db, uid, now, require, save_upload, get_settings, hash_pw, STAFF_ROLES
-from routes_orders import adjust_stock, next_order_no, cancel_and_restock, FLOW
+from routes_orders import adjust_stock, next_order_no, cancel_and_restock, FLOW, razorpay_refund
 from routes_store import discount_pct
 from reports import invoice_pdf, build_report, to_xlsx, to_pdf
 import notify
@@ -371,10 +371,53 @@ async def handle_return(oid: str, action: str, u=Depends(MGR)):
         for it in o["items"]:
             await adjust_stock(it["product_id"], it["qty"], "return", f"Return {o['order_no']}", u["name"], o["order_no"])
     if action == "refunded":
+        if o["payment_method"] == "razorpay" and o["payment_status"] == "paid":
+            upd["refund_id"] = await razorpay_refund(o)
         upd["payment_status"] = "refunded"
     await db.orders.update_one({"id": oid}, {"$set": upd})
     await notify.send(["inapp", "sms"], f"Return {action}", f"Your {rr.get('type')} request for {o['order_no']} is {action}.", user_id=o.get("user_id"), phone=o["address"].get("phone"))
     return {"ok": True}
+
+
+@router.post("/orders/{oid}/refund")
+async def refund_order(oid: str, u=Depends(MGR)):
+    o = await _order(oid, u)
+    if o["payment_status"] not in ("paid", "refund_pending") or o["status"] != "cancelled":
+        raise HTTPException(400, "Only cancelled, paid orders can be refunded here (use Returns for delivered orders)")
+    upd = {"payment_status": "refunded"}
+    if o["payment_method"] == "razorpay":
+        upd["refund_id"] = await razorpay_refund(o)
+    await db.orders.update_one({"id": oid}, {"$set": upd})
+    await notify.send(["inapp", "sms", "email"], "Refund processed", f"Refund of Rs.{o['total']:.0f} for {o['order_no']} has been processed.",
+                      user_id=o.get("user_id"), phone=o["address"].get("phone"), email=o["address"].get("email"))
+    return {"ok": True}
+
+
+@router.get("/integrations")
+async def integrations_status(u=Depends(MGR)):
+    import integrations as ig
+    from core import razorpay_keys
+    s = await get_settings()
+    return ig.status(s, bool(razorpay_keys(s)[0]))
+
+
+@router.get("/export/{col}")
+async def export(col: str, u=Depends(OWN)):
+    from openpyxl import Workbook
+    q = {"products": ({}, "products"), "orders": ({}, "orders"), "customers": ({"role": "customer", "deleted": {"$ne": True}}, "users"),
+         "stock_movements": ({}, "stock_movements"), "enquiries": ({}, "enquiries")}.get(col)
+    if not q:
+        raise HTTPException(404, "Unknown export")
+    docs = await db[q[1]].find(q[0], {"_id": 0, "password_hash": 0}).to_list(100000)
+    wb = Workbook()
+    ws = wb.active
+    keys = sorted({k for d in docs for k in d})
+    ws.append(keys)
+    for d in docs:
+        ws.append([v if isinstance(v, (int, float, str, bool)) or v is None else str(v) for v in (d.get(k) for k in keys)])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return Response(buf.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="{col}.xlsx"'})
 
 
 @router.get("/orders/{oid}/{doc}")
@@ -636,7 +679,7 @@ async def add_staff(body: StaffIn, u=Depends(OWN)):
     if await db.users.find_one({"email": body.email.lower()}):
         raise HTTPException(400, "Email already exists")
     d = {"id": uid(), "name": body.name, "email": body.email.lower(), "phone": body.phone, "role": body.role, "active": body.active,
-         "password_hash": hash_pw(body.password), "created_at": now()}
+         "password_hash": hash_pw(body.password), "must_change_password": True, "created_at": now()}
     await db.users.insert_one(d)
     return {"ok": True}
 
@@ -648,7 +691,7 @@ async def edit_staff(sid: str, body: StaffIn, u=Depends(OWN)):
         raise HTTPException(400, "Invalid role")
     if body.password:
         upd["password_hash"] = hash_pw(body.password)
-        upd["pw_changed"] = True
+        upd["must_change_password"] = sid != u["id"]
     await db.users.update_one({"id": sid, "role": {"$in": STAFF_ROLES}}, {"$set": upd})
     return {"ok": True}
 

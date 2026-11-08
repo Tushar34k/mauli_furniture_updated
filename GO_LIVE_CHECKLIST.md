@@ -1,49 +1,35 @@
 # GO LIVE CHECKLIST
 
-Everything replaceable lives in **two places only**: `backend/.env` (+ `frontend/.env`) and **Admin › Settings**.
+All shop details live in **Admin › Settings** (database). All secrets live in **backend/.env** only. Status of every integration: **Admin › Integrations**.
 
-## 1. API keys / accounts you need to provide
-| Service | Why | Where to get it | Put it in |
+## 1. Integrations (exact .env variables)
+| Service | .env variables | Where to get keys | Without keys |
 |---|---|---|---|
-| Razorpay Key ID + Secret | Online payments (UPI, cards, net banking, wallets, EMI) | dashboard.razorpay.com → Settings → API Keys (needs KYC; requires the legal pages already included) | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` in .env **or** Admin › Settings › Payment keys |
-| SMS / OTP provider: MSG91 (recommended for India, needs DLT template) or Twilio | Real OTP login + SMS order updates | msg91.com → Auth key + Flow template ID / twilio.com → Account SID, Auth Token, From number | `OTP_MODE=live`, `SMS_MODE=live`, `SMS_PROVIDER=msg91|twilio`, `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` or `TWILIO_*` |
-| Firebase Cloud Messaging | Push notifications in the Android app | console.firebase.google.com → Project settings → Cloud Messaging; download `google-services.json` for Capacitor | `FCM_SERVER_KEY` (+ `android/app/google-services.json`) |
-| WhatsApp Business API (optional) | WhatsApp order updates | Meta Business / Gupshup / Interakt | add provider code in `backend/notify.py` (`send()` already routes the `whatsapp` channel) |
-| Email (optional) | Order emails | Resend / SendGrid | `backend/notify.py` `email` channel |
-| Google Maps | Showroom map | maps.google.com → Share → Embed a map → copy `src` URL (no key needed for embed) | Admin › Settings › Google Maps embed URL |
-| Google Analytics 4 | Analytics | analytics.google.com → Measurement ID `G-XXXX` | `REACT_APP_GA_ID` in `frontend/.env` |
-| Cloud storage (optional) | Product images on CDN | Cloudinary or AWS S3 | `STORAGE_BACKEND=cloudinary|s3` + implement in `core.save_upload` |
-| Google login | Customer social login | Already works via Emergent-managed Google Auth | — |
+| SMS / OTP (MSG91 primary) | `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` (DLT-approved Flow template with variable `##otp##`/`##var##`) | msg91.com → Authkey; Flow → create template; DLT registration (Jio/Vi portal) | OTP login hidden; Google login only |
+| SMS / OTP (Twilio optional) | `SMS_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | console.twilio.com | same |
+| Razorpay | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | dashboard.razorpay.com → Settings → API Keys; Webhooks → URL `https://<domain>/api/payments/razorpay/webhook`, events payment.captured, payment.failed, order.paid, refund.processed | Online payment hidden; COD + Pay at Store work |
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (verified domain) | resend.com → API Keys + Domains | Emails skipped (logged as "skipped") |
+| Email (SMTP alternative) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | Gmail Workspace / Zoho / any SMTP | same |
+| Push (FCM HTTP v1) | `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON` (service-account JSON on one line) | Firebase console → Project settings → Service accounts → Generate key | Push skipped |
+| WhatsApp Business (optional) | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | developers.facebook.com → WhatsApp Cloud API | Click-to-chat links still work |
+| Storage | `STORAGE_BACKEND=cloudinary` + `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — or `STORAGE_BACKEND=s3` + `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | cloudinary.com console / AWS IAM + S3 bucket (public-read objects or CloudFront) | Uploads disabled; paste image URLs |
+| Google login | none (Emergent-managed) | — | works |
+| Google Maps | Admin › Settings › "Google Maps embed URL" | maps.google.com → Share → Embed a map → copy `src` | Map hidden, address shown |
+| Analytics | `REACT_APP_GA_ID` (frontend/.env) | analytics.google.com | off |
 
-## 2. backend/.env — replace for production
-- [ ] `DB_NAME` / `MONGO_URL` — production database (e.g. MongoDB Atlas)
-- [ ] `JWT_SECRET` — new random 64-char hex (`python -c "import secrets;print(secrets.token_hex(32))"`)
-- [ ] `ADMIN_EMAIL`, `ADMIN_PASSWORD` — real owner login (then change password from Admin › Change Password)
-- [ ] `CORS_ORIGINS` — your exact domain(s), comma-separated (not `*`)
-- [ ] `FRONTEND_URL` — public site URL (used by sitemap)
-- [ ] `OTP_MODE=live`, `SMS_MODE=live` + SMS provider keys
-- [ ] `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (live keys `rzp_live_...`). Demo payment is automatically disabled once valid keys exist.
-- [ ] `FCM_SERVER_KEY`
-- [ ] `SHOP_*` values (only used on first seed; afterwards edit in Admin › Settings)
-- [ ] Remove demo accounts (manager/staff/delivery@mauli.com, phone 9999999999) or change their passwords in Admin › Settings & Staff
+## 2. Before publishing
+- [ ] `APP_ENV=production`, new `JWT_SECRET`, `CORS_ORIGINS` = exact domain, `FRONTEND_URL`
+- [ ] Log in as Owner with `OWNER_PASSWORD`, set a new password (forced), then remove `OWNER_PASSWORD` from .env
+- [ ] Admin › Settings: shop name (EN/MR), address, phone, WhatsApp, email, GST number, timings, logo URL, invoice prefix/footer, social links, map
+- [ ] Replace sample products (44 placeholder products currently loaded on request) with your real catalogue or edit them; upload real photos
+- [ ] Create staff/delivery users (Admin › Settings & Staff)
+- [ ] Add coupons, banners, delivery pincodes & charges, delivery slots (Admin › Catalog & Store)
+- [ ] Replace the placeholder logo files `frontend/public/logo.svg`, `frontend/public/icons/*`, `backend/assets/logo.png` with the real logo (the original logo file was never received)
+- [ ] Review legal pages (auto-generated from Settings; customise in Catalog & Store › Legal pages)
+- [ ] `frontend/public/.well-known/assetlinks.json` SHA-256 + `capacitor.config.json` server.url
+- [ ] Place a ₹1 live Razorpay order, refund it from Admin › Orders
 
-## 3. Admin › Settings — replace
-- [ ] Shop name, address, phone, WhatsApp (format `91XXXXXXXXXX`), email, **GST number**, timings
-- [ ] Google Maps embed URL, logo URL, invoice prefix & terms
-- [ ] Free-delivery threshold, default delivery charge, COD limit
-- [ ] Social links
-- [ ] Homepage sections order/visibility
-
-## 4. Content — replace
-- [ ] Logo: replace `frontend/public/logo.svg`, `frontend/public/icons/*.png` (192, 512, maskable-192/512, apple-touch-icon) and `backend/assets/logo.png` (invoices) with the real Mauli logo. **Placeholder logo currently used — the original logo file was not received.**
-- [ ] Product photos: Admin › Products › Edit › Images (upload). Seed images are free Unsplash/Pexels photos.
-- [ ] Banners, categories images, coupons, delivery pincodes & charges, slots (Admin › Catalog & Store)
-- [ ] Legal pages: Admin › Catalog & Store › Legal / info pages — replace `[DATE]` and review with your CA/lawyer
-- [ ] `frontend/public/.well-known/assetlinks.json` — SHA-256 fingerprint from Play Console
-- [ ] `frontend/capacitor.config.json` — `server.url` = your domain
-
-## 5. Final checks
-- [ ] HTTPS on both frontend and API
-- [ ] Place one live ₹1 test order with Razorpay live keys, then refund it
-- [ ] Lighthouse (mobile) ≥ 90: serve `yarn build` output with gzip/brotli + CDN caching
-- [ ] Submit `/api/sitemap.xml` in Google Search Console
+## 3. Backups
+- MongoDB Atlas: enable Cloud Backup (daily snapshots, 7–30 day retention) — Cluster › Backup.
+- Self-hosted: cron `0 2 * * * mongodump --uri "$MONGO_URL" --db $DB_NAME --gzip --archive=/backups/mfm-$(date +\%F).gz` and copy off-server.
+- Manual: Admin › Integrations › Data export (products, orders, customers, stock history, enquiries as Excel).

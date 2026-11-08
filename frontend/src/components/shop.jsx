@@ -5,13 +5,15 @@ import { useApp } from "@/lib/store";
 import { img, inr } from "@/lib/api";
 
 export function Logo({ compact = false, light = false }) {
+  const { settings: s, lang } = useApp();
+  const name = (lang === "mr" && s.shop_name_mr) || s.shop_name || "";
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0" data-testid="header-logo">
-      <img src="/logo.svg" alt="Mauli Furniture Mall" className="h-10 w-10 sm:h-11 sm:w-11" width="44" height="44" />
+      <img src={s.logo || "/logo.svg"} alt={s.shop_name || "logo"} className="h-10 w-10 rounded-lg object-contain sm:h-11 sm:w-11" width="44" height="44" />
       {!compact && (
         <span className="leading-none">
-          <span className={`block font-deva text-lg sm:text-xl font-extrabold ${light ? "text-white" : "text-[#7A1F1F]"}`}>माऊली फर्निचर मॉल</span>
-          <span className={`block text-[9px] sm:text-[10px] tracking-[0.28em] font-semibold ${light ? "text-[#F5B800]" : "text-[#E8671B]"}`}>MAULI FURNITURE MALL</span>
+          <span className={`block font-deva text-lg sm:text-xl font-extrabold ${light ? "text-white" : "text-[#7A1F1F]"}`}>{name}</span>
+          {s.shop_name_mr && s.shop_name && <span className={`block text-[9px] sm:text-[10px] uppercase tracking-[0.28em] font-semibold ${light ? "text-[#F5B800]" : "text-[#E8671B]"}`}>{lang === "mr" ? s.shop_name : s.shop_name_mr}</span>}
         </span>
       )}
     </Link>
@@ -126,7 +128,8 @@ export function WhatsAppFab() {
   const { settings } = useApp();
   const { pathname } = useLocation();
   if (["/cart", "/checkout", "/login"].includes(pathname) || pathname.startsWith("/product/")) return null;
-  const n = (settings.whatsapp || "919876543210").replace(/\D/g, "");
+  const n = (settings.whatsapp || "").replace(/\D/g, "");
+  if (!n) return null;
   return (
     <a href={`https://wa.me/${n}?text=${encodeURIComponent("नमस्कार, मला फर्निचरबद्दल माहिती हवी आहे.")}`} target="_blank" rel="noreferrer"
       className="no-print fixed bottom-24 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-110 md:bottom-6 md:h-14 md:w-14"

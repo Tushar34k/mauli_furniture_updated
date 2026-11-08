@@ -41,8 +41,9 @@ function OrderSheet({ id, onClose, onChange }) {
             <button onClick={() => run(() => api.put(`/admin/orders/${o.id}`, { notes: note }), "Notes saved")} className="btn-outline mt-2 !py-1.5" data-testid="save-notes-btn">Save notes</button></div>}
           {o.return_request && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3" data-testid="return-request-box"><b className="capitalize">{o.return_request.type} request</b> — {o.return_request.status}<br />{o.return_request.reason}
             {mgr && <div className="mt-2 flex flex-wrap gap-1.5">{({ requested: ["approved", "rejected"], approved: [o.return_request.type === "return" ? "refunded" : "replaced"] }[o.return_request.status] || []).map((a) => <button key={a} onClick={() => run(() => api.post(`/admin/orders/${o.id}/return/${a}`), a)} className="chip bg-white capitalize" data-testid={`return-${a}`}>{a}</button>)}</div>}</div>}
-          <div className="flex gap-2"><button onClick={() => openFile(`/admin/orders/${o.id}/invoice`)} className="btn-secondary !py-2" data-testid="print-invoice-btn"><FileText size={15} />Invoice</button>
-            <button onClick={() => openFile(`/admin/orders/${o.id}/packing-slip`)} className="btn-outline !py-2" data-testid="print-packing-slip-btn"><Package size={15} />Packing slip</button></div>
+          <div className="flex flex-wrap gap-2"><button onClick={() => openFile(`/admin/orders/${o.id}/invoice`)} className="btn-secondary !py-2" data-testid="print-invoice-btn"><FileText size={15} />Invoice</button>
+            <button onClick={() => openFile(`/admin/orders/${o.id}/packing-slip`)} className="btn-outline !py-2" data-testid="print-packing-slip-btn"><Package size={15} />Packing slip</button>
+            {mgr && o.status === "cancelled" && ["paid", "refund_pending"].includes(o.payment_status) && <button onClick={() => window.confirm(`Refund ${inr(o.total)}?`) && run(() => api.post(`/admin/orders/${o.id}/refund`), "Refund processed")} className="btn-primary !py-2" data-testid="refund-order-btn">Refund {inr(o.total)}</button>}</div>
           <div><p className="label">Timeline</p><Timeline o={o} en /></div>
         </div>}
       </SheetContent>

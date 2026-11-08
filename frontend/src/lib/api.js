@@ -9,6 +9,17 @@ api.interceptors.request.use((c) => {
   if (t) c.headers.Authorization = `Bearer ${t}`;
   return c;
 });
+api.interceptors.response.use((r) => r, (e) => {
+  const s = e?.response?.status;
+  const d = e?.response?.data?.detail;
+  if (s === 401 && localStorage.getItem("mfm_token") && !String(e.config?.url).includes("/auth/")) {
+    localStorage.removeItem("mfm_token");
+    window.location.assign(window.location.pathname.startsWith("/admin") ? "/admin/login" : "/login");
+  }
+  if (s === 403 && d === "PASSWORD_CHANGE_REQUIRED" && window.location.pathname !== "/admin/password") window.location.assign("/admin/password");
+  if (!e.response) e.message = "Network error. Please check your connection. / इंटरनेट कनेक्शन तपासा.";
+  return Promise.reject(e);
+});
 
 export function errMsg(e) {
   const d = e?.response?.data?.detail;

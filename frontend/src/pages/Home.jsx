@@ -61,18 +61,19 @@ function CategoryIcons({ cats }) {
   );
 }
 
-const ROOMS = [["living", "sofa3"], ["bedroom", "bed1"], ["dining_room", "din1"], ["office_room", "off4"], ["kids", "study1"], ["outdoor_room", "out3"]];
+const ROOMS = ["living", "bedroom", "dining_room", "office_room", "kids", "outdoor_room"];
 const ROOM_Q = { living: "living", bedroom: "bedroom", dining_room: "dining", office_room: "office", kids: "kids", outdoor_room: "outdoor" };
 
-function Rooms() {
+function Rooms({ cats }) {
   const { t } = useApp();
+  const pic = (k) => cats.find((c) => c.room === ROOM_Q[k] && c.image)?.image;
   return (
     <section className="container-x py-6 sm:py-8" data-testid="shop-by-room">
       <h2 className="section-title mb-4">{t("shop_by_room")}</h2>
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        {ROOMS.map(([k, im], idx) => (
-          <Link key={k} to={`/products?room=${ROOM_Q[k]}`} className={`group relative overflow-hidden rounded-3xl ${idx === 0 ? "row-span-2 lg:col-span-2" : ""}`} data-testid={`room-${k}`}>
-            <img src={img(`/api/uploads/seed/${im}.jpg`)} alt={t(k)} loading="lazy" className={`w-full object-cover transition-transform duration-700 group-hover:scale-105 ${idx === 0 ? "h-full min-h-[260px]" : "h-36 sm:h-48"}`} />
+        {ROOMS.map((k, idx) => (
+          <Link key={k} to={`/products?room=${ROOM_Q[k]}`} className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E8671B] to-[#7A1F1F] ${idx === 0 ? "row-span-2 lg:col-span-2" : ""}`} data-testid={`room-${k}`}>
+            {pic(k) ? <img src={img(pic(k))} alt={t(k)} loading="lazy" className={`w-full object-cover transition-transform duration-700 group-hover:scale-105 ${idx === 0 ? "h-full min-h-[260px]" : "h-36 sm:h-48"}`} /> : <div className={idx === 0 ? "min-h-[260px]" : "h-36 sm:h-48"} />}
             <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E0E]/80 to-transparent" />
             <span className="absolute bottom-3 left-4 text-base font-bold text-white sm:text-xl">{t(k)} →</span>
           </Link>
@@ -136,7 +137,7 @@ export default function Home() {
   const { t, L } = useApp();
   const [d, setD] = useState(null);
   const [cats, setCats] = useState([]);
-  useTitle(null, "Mauli Furniture Mall, Pune - sofas, beds, dining sets and more.");
+  useTitle(null);
   useEffect(() => {
     api.get("/home").then((r) => setD(r.data));
     api.get("/categories").then((r) => setCats(r.data));
@@ -150,7 +151,7 @@ export default function Home() {
     deals: <Rail testid="deals-section" title={t("deals")} items={d.deals} link="/products?deal=1" extra={<span className="flex items-center gap-2 text-sm text-gray-500">{t("ends_in")} <Countdown to={d.deal_ends_at} /></span>} />,
     new_arrivals: <Rail testid="new-arrivals" title={t("new_arrivals")} items={d.new_arrivals} link="/products?sort=newest" />,
     best_sellers: <Rail testid="best-sellers" title={t("best_sellers")} items={d.best_sellers} link="/products?sort=popularity" />,
-    rooms: <Rooms />, price: <Prices />, reviews: <Reviews items={d.reviews} />,
+    rooms: <Rooms cats={cats} />, price: <Prices />, reviews: <Reviews items={d.reviews} />,
     blog: d.blogs?.length ? (
       <section className="container-x py-8" data-testid="home-blog"><div className="mb-4 flex justify-between"><h2 className="section-title">{t("blog")}</h2><Link to="/blog" className="text-sm font-semibold text-[#E8671B]">{t("view_all")} →</Link></div>
         <div className="grid gap-4 sm:grid-cols-3">{d.blogs.map((b) => (

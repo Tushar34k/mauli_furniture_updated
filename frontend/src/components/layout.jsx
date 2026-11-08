@@ -89,11 +89,11 @@ export function SearchBox({ autoFocus = false, onDone }) {
 }
 
 export function Header() {
-  const { t, cartCount, user, wishlist } = useApp();
+  const { t, cartCount, user, wishlist, settings } = useApp();
   return (
     <header className="no-print sticky top-0 z-40 border-b border-[#efe2d4] bg-[#FFFAF5]/90 backdrop-blur-xl">
-      <div className="bg-[#7A1F1F] py-1.5 text-center text-[11px] sm:text-xs text-white/90">
-        <span className="text-[#F5B800] font-semibold">WELCOME10</span> · {t("free_installation")} · {t("easy_returns")} · {t("secure_pay")}
+      <div className="bg-[#7A1F1F] py-1.5 text-center text-[11px] sm:text-xs text-white/90" data-testid="announcement-bar">
+        {settings.announcement ? <span className="text-[#F5B800] font-semibold">{settings.announcement}</span> : <>{t("free_installation")} · {t("easy_returns")} · {t("secure_pay")}</>}
       </div>
       <div className="container-x flex items-center gap-3 py-3 sm:gap-6">
         <Logo />
@@ -153,11 +153,12 @@ export function Footer() {
           {links.map(([k, to]) => <Link key={k} to={to} className="block py-1 text-sm hover:text-[#F5B800]" data-testid={`footer-link-${k}`}>{t(k)}</Link>)}
           <Link to="/blog" className="block py-1 text-sm hover:text-[#F5B800]">{t("blog")}</Link></div>
         <div className="space-y-2 text-sm"><h4 className="mb-3 !text-[#F5B800]">{t("visit_showroom")}</h4>
-          <p className="flex gap-2"><MapPin size={16} className="shrink-0" />{s.address}</p>
-          <p className="flex gap-2"><Phone size={16} />{s.phone}</p><p className="flex gap-2"><Mail size={16} />{s.email}</p>
-          <p className="flex gap-2"><Clock size={16} />{s.timings}</p><p className="text-xs text-white/60">GSTIN: {s.gst_number}</p></div>
+          {s.address && <p className="flex gap-2"><MapPin size={16} className="shrink-0" />{s.address}</p>}
+          {s.phone && <p className="flex gap-2"><Phone size={16} />{s.phone}</p>}{s.email && <p className="flex gap-2"><Mail size={16} />{s.email}</p>}
+          {s.timings && <p className="flex gap-2"><Clock size={16} />{s.timings}</p>}{s.gst_number && <p className="text-xs text-white/60">GSTIN: {s.gst_number}</p>}
+          <div className="flex gap-3 pt-1">{Object.entries(s.social || {}).filter(([, v]) => v).map(([k, v]) => <a key={k} href={v} target="_blank" rel="noreferrer" className="text-xs capitalize underline hover:text-[#F5B800]">{k}</a>)}</div></div>
       </div>
-      <div className="relative border-t border-white/10 py-4 text-center text-xs text-white/60">© {new Date().getFullYear()} {s.shop_name || "Mauli Furniture Mall"}. All rights reserved.</div>
+      <div className="relative border-t border-white/10 py-4 text-center text-xs text-white/60">© {new Date().getFullYear()} {s.shop_name}. All rights reserved.</div>
     </footer>
   );
 }

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import api, { errMsg } from "@/lib/api";
+import api, { errMsg, openFile } from "@/lib/api";
 import { useApp } from "@/lib/store";
 import { PageHead } from "@/admin/AdminApp";
 
 const FIELDS = [["shop_name", "Shop name"], ["shop_name_mr", "Shop name (मराठी)"], ["address", "Address"], ["phone", "Phone"], ["whatsapp", "WhatsApp number (with 91)"], ["email", "Email"],
-  ["gst_number", "GST number"], ["timings", "Showroom timings"], ["map_embed", "Google Maps embed URL"], ["logo", "Logo URL"], ["invoice_prefix", "Invoice / order prefix"], ["invoice_terms", "Invoice terms"],
+  ["gst_number", "GST number"], ["timings", "Showroom timings"], ["map_embed", "Google Maps embed URL"], ["logo", "Logo URL (used in header, login, invoices, emails)"], ["announcement", "Top announcement bar text"], ["invoice_prefix", "Invoice / order prefix"], ["invoice_terms", "Invoice footer / terms"],
   ["free_delivery_above", "Free delivery above ₹"], ["default_delivery_charge", "Default delivery charge ₹ (unlisted Maharashtra pincodes)"], ["cod_limit", "COD limit ₹"], ["deal_hours", "Deal countdown hours"], ["emi_text", "EMI / offer text"]];
 
 function Staff() {
@@ -78,10 +78,11 @@ export function SettingsPage() {
 }
 
 export function ChangePassword() {
+  const { refreshMe } = useApp();
   const [f, setF] = useState({ old_password: "", new_password: "", confirm: "" });
   const submit = async () => {
     if (f.new_password !== f.confirm) return toast.error("Passwords do not match");
-    try { await api.post("/auth/change-password", { old_password: f.old_password, new_password: f.new_password }); toast.success("Password changed"); setF({ old_password: "", new_password: "", confirm: "" }); } catch (e) { toast.error(errMsg(e)); }
+    try { await api.post("/auth/change-password", { old_password: f.old_password, new_password: f.new_password }); toast.success("Password changed"); setF({ old_password: "", new_password: "", confirm: "" }); refreshMe(); } catch (e) { toast.error(errMsg(e)); }
   };
   return (
     <div className="max-w-md" data-testid="change-password-page"><PageHead title="Change password" />
@@ -90,3 +91,25 @@ export function ChangePassword() {
         <button onClick={submit} className="btn-primary" data-testid="cp-submit-btn">Update password</button></div></div>
   );
 }
+
+export function Integrations() {
+  const { user } = useApp();
+  const [rows, setRows] = useState(null);
+  useEffect(() => { api.get("/admin/integrations").then((r) => setRows(r.data)).catch((e) => toast.error(errMsg(e))); }, []);
+  const exp = (c) => openFile(`/admin/export/${c}`, `${c}.xlsx`).catch((e) => toast.error(errMsg(e)));
+  return (
+    <div className="space-y-5" data-testid="admin-integrations">
+      <PageHead title="Integrations / इंटिग्रेशन" />
+      {!rows ? <div className="skeleton h-60" /> : <div className="grid gap-3 md:grid-cols-2">{rows.map((r) => (
+        <div key={r.key} className="card space-y-2 p-4 text-sm" data-testid={`integration-${r.key}`}>
+          <div className="flex items-center justify-between"><b className="capitalize">{r.key.replace(/_/g, " ")}</b>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${r.configured ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`} data-testid={`integration-status-${r.key}`}>{r.configured ? `Connected (${r.provider})` : "Not configured"}</span></div>
+          {!r.configured && <><p>{r.help_en}</p><p className="font-deva text-gray-600">{r.help_mr}</p></>}
+          <p className="text-xs text-gray-500">.env: {r.env.join(" · ")}</p>
+        </div>))}</div>}
+      {user.role === "owner" && <div className="card space-y-3 p-5" data-testid="data-export"><h3 className="text-base">Data export (backup)</h3>
+        <div className="flex flex-wrap gap-2">{["products", "orders", "customers", "stock_movements", "enquiries"].map((c) => <button key={c} onClick={() => exp(c)} className="btn-outline !py-2 capitalize" data-testid={`export-${c}`}>{c.replace("_", " ")} (.xlsx)</button>)}</div></div>}
+    </div>
+  );
+}
+

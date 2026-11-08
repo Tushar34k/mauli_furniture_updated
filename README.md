@@ -1,48 +1,33 @@
-# माऊली फर्निचर मॉल — Mauli Furniture Mall
+# Mauli Furniture Mall — Storefront + Inventory Admin
 
-Full e-commerce storefront (PWA, Play-Store ready) + inventory/admin panel + REST API, from one codebase.
+One codebase: customer storefront (PWA, Play-Store ready) at `/`, admin panel at `/admin`, REST API at `/api` (Swagger `/api/docs`, health `/api/health`). React 19 + Tailwind · FastAPI · MongoDB.
 
-| Part | Path | Tech |
-|---|---|---|
-| Customer storefront (PWA) | `/` | React 19, Tailwind, shadcn/ui |
-| Admin panel | `/admin` | same React app, role-based |
-| REST API | `/api/*` (Swagger: `/api/docs`) | FastAPI + MongoDB (Motor) |
+## First-run setup (production)
+1. Copy `backend/.env.example` → `backend/.env` and `frontend/.env.example` → `frontend/.env`; fill values (see GO_LIVE_CHECKLIST.md).
+2. Set `OWNER_EMAIL` and `OWNER_PASSWORD`. On first start the API creates **one Owner** (only if no owner exists), default categories, settings and indexes — no demo data.
+3. Open `/admin/login`, sign in as Owner → you are forced to set a new password. Then remove `OWNER_PASSWORD` from .env.
+4. Fill **Admin › Settings** (shop details, GST, logo, map, invoice footer, social links) and check **Admin › Integrations**.
 
-## Demo logins (TEST MODE)
-| Role | Login | Password / OTP |
-|---|---|---|
-| Owner | admin@mauli.com | Admin@123 |
-| Owner (you) | tusharkokane366@gmail.com | Admin@123 |
-| Manager | manager@mauli.com | Manager@123 |
-| Staff | staff@mauli.com | Staff@123 |
-| Delivery | delivery@mauli.com | Delivery@123 |
-| Customer | phone 9999999999 | OTP 123456 |
+## Adding staff
+Admin › Settings & Staff → name, email, temporary password, role (Manager / Staff / Delivery / Owner) → Add. New staff must change the password on first login. Owner can reset passwords or deactivate staff there.
 
-Admin login: `https://<your-domain>/admin/login`. With `OTP_MODE=test` any phone number works with OTP **123456**. Coupons: WELCOME10, DIWALI2000, FREESHIP.
-
-### How to change the admin password
-1. Log in to `/admin` → **Change Password** (sidebar). After this the `.env` password is no longer re-applied.
-2. Or change `ADMIN_PASSWORD` in `backend/.env` and restart the backend (only until changed from the UI).
-3. The Owner can reset any staff password in **Settings & Staff → Reset password**.
+## Development only
+`APP_ENV=development python backend/seed_demo.py` seeds full demo data (refuses to run unless APP_ENV=development; generated passwords are printed to the console). `python backend/seed_demo.py --products-only` adds sample catalogue products only.
 
 ## Run locally
 ```bash
-cd backend && cp .env.example .env && pip install -r requirements.txt
-uvicorn server:app --host 0.0.0.0 --port 8001 --reload
-cd frontend && cp .env.example .env   # REACT_APP_BACKEND_URL=http://localhost:8001
-yarn install && yarn start
+cd backend && pip install -r requirements.txt && uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+cd frontend && yarn install && yarn start
 ```
-First start seeds (only if products collection is empty): settings, 10 categories, 44 products (images saved to `backend/uploads/seed`), brands, banners, coupons, 69 delivery pincodes, slots, legal pages, blogs, reviews, 8 sample orders and demo users.
 
 ## Deploy
-- **Emergent**: press *Deploy* — frontend, backend and MongoDB hosted together with HTTPS.
-- **Self-host**: `yarn build` → serve `build/` on a CDN/static host with SPA fallback to `index.html`; backend `uvicorn server:app --workers 2` behind Nginx/Caddy (HTTPS); MongoDB Atlas; route `/api/*` to the backend; set `CORS_ORIGINS`. Persist `backend/uploads/` or switch `STORAGE_BACKEND`.
+- **Emergent**: press Deploy (HTTPS, managed MongoDB).
+- **Self-host**: `yarn build` → static host/CDN with SPA fallback; backend `uvicorn server:app --workers 2` behind Nginx/Caddy with HTTPS; route `/api/*` to backend; MongoDB Atlas.
 
-## Mock / test-mode integrations
-- OTP: `OTP_MODE=test` (fixed 123456). MSG91/Twilio code ready in `backend/notify.py`.
-- Payments: Razorpay placeholder keys → **Demo Payment** screen marks orders paid. Real keys → real Razorpay checkout + signature verification.
-- SMS / WhatsApp / Email / Push: **MOCKED** — logged to server log and Admin › Notifications log.
-- Storage: local disk (`backend/uploads`).
+## Backup
+MongoDB Atlas Cloud Backup (recommended) or nightly `mongodump` (see GO_LIVE_CHECKLIST.md §3). Owner can export products/orders/customers/stock history/enquiries to Excel from **Admin › Integrations › Data export**.
 
-## Docs
-`docs/API.md` (API reference) · `docs/ADMIN_GUIDE.md` · `docs/PLAYSTORE.md` (TWA/Capacitor, AAB, assetlinks, listing text EN+MR, screenshots, data safety) · `GO_LIVE_CHECKLIST.md` (all values + keys to replace).
+## Integrations
+Every integration shows "Connected" / "Not configured" in Admin › Integrations with the exact .env keys (English + Marathi). Missing keys never fake success: the feature is hidden for customers (OTP login, online payment, photo upload) or the message is logged as "skipped".
+
+Docs: `docs/API.md`, `docs/ADMIN_GUIDE.md`, `docs/PLAYSTORE.md`, `GO_LIVE_CHECKLIST.md`.

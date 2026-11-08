@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { CreditCard, Banknote, Store, ShieldCheck, Smartphone } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CreditCard, Banknote, Store } from "lucide-react";
 import api, { errMsg, inr, track } from "@/lib/api";
 import { useApp, useTitle } from "@/lib/store";
 import { usePricing, PriceBox } from "@/pages/Cart";
@@ -24,7 +23,7 @@ export function AddressForm({ value, onChange }) {
   );
 }
 
-const loadRzp = () => new Promise((res) => {
+export const loadRzp = () => new Promise((res) => {
   if (window.Razorpay) return res(true);
   const s = document.createElement("script");
   s.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -33,20 +32,14 @@ const loadRzp = () => new Promise((res) => {
   document.body.appendChild(s);
 });
 
-function DemoPay({ open, amount, onPay, onClose }) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent data-testid="demo-payment-dialog">
-        <DialogHeader><DialogTitle className="text-[#7A1F1F]">Demo Payment (Test Mode)</DialogTitle></DialogHeader>
-        <p className="text-sm text-gray-600">Razorpay keys are not configured yet, so this simulated gateway marks the order as paid. Add keys in Admin › Settings or .env to go live.</p>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">{[[Smartphone, "UPI"], [CreditCard, "Card / EMI"], [ShieldCheck, "Net banking"]].map(([I, l]) => (
-          <div key={l} className="rounded-xl border bg-[#fbf3ea] p-3"><I className="mx-auto mb-1 text-[#E8671B]" size={20} />{l}</div>))}</div>
-        <p className="text-center text-2xl font-extrabold">{inr(amount / 100)}</p>
-        <button disabled={busy} onClick={async () => { setBusy(true); await onPay(); setBusy(false); }} className="btn-primary w-full !py-3" data-testid="demo-pay-btn">Pay {inr(amount / 100)} (Demo)</button>
-      </DialogContent>
-    </Dialog>
-  );
+export async function payWithRazorpay(payment, a, settings, onPaid, onDismiss) {
+  if (!(await loadRzp())) throw new Error("Could not load Razorpay. Check your internet connection.");
+  new window.Razorpay({
+    key: payment.key_id, amount: payment.amount, currency: "INR", order_id: payment.rzp_order_id, name: settings.shop_name, image: settings.logo || `${window.location.origin}/icons/icon-192.png`,
+    prefill: { name: a.name, contact: a.phone, email: a.email || "" }, theme: { color: "#E8671B" },
+    handler: async (r) => { await onPaid(r); },
+    modal: { ondismiss: () => { toast.message("Payment pending. You can retry from the order page."); onDismiss?.(); } },
+  }).open();
 }
 
 export default function Checkout() {
@@ -59,9 +52,8 @@ export default function Checkout() {
   const [slots, setSlots] = useState([]);
   const [slot, setSlot] = useState("");
   const [date, setDate] = useState("");
-  const [method, setMethod] = useState("razorpay");
+  const [method, setMethod] = useState("cod");
   const [busy, setBusy] = useState(false);
-  const [demo, setDemo] = useState(null);
   const coupon = localStorage.getItem("mfm_coupon") || "";
   const saved = user?.addresses || [];
   const chosen = addrId ? saved.find((a) => a.id === addrId) : addr;
@@ -85,14 +77,10 @@ export default function Checkout() {
         address: a, email: email || user?.email || "", slot, delivery_date: date, payment_method: method });
       const { order, payment } = data;
       if (!payment) return finish(order);
-      if (payment.mode === "demo") { setDemo({ order, amount: payment.amount }); return; }
-      if (!(await loadRzp())) throw new Error("Could not load Razorpay");
-      new window.Razorpay({
-        key: payment.key_id, amount: payment.amount, currency: "INR", order_id: payment.rzp_order_id, name: settings.shop_name, image: `${window.location.origin}/icons/icon-192.png`,
-        prefill: { name: a.name, contact: a.phone, email }, theme: { color: "#E8671B" },
-        handler: async (r) => { await api.post(`/orders/${order.id}/pay/verify`, r); finish(order); },
-        modal: { ondismiss: () => toast.message("Payment pending. You can retry from My Orders.") },
-      }).open();
+      await payWithRazorpay(payment, { ...a, email }, settings, async (r) => {
+        try { await api.post(`/orders/${order.id}/pay/verify`, r); } catch (e) { toast.error(errMsg(e)); }
+        finish(order);
+      }, () => finish(order));
     } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
   };
 
@@ -105,7 +93,7 @@ export default function Checkout() {
         <button onClick={() => setGuest(true)} className="btn-outline w-full !py-3" data-testid="checkout-guest-btn">{t("guest")}</button></div>
     </div>);
   const minDate = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
-  const methods = [["razorpay", CreditCard, t("pay_online")], ["cod", Banknote, t("cod")], ["store", Store, t("store")]];
+  const methods = [...(settings.razorpay_enabled ? [["razorpay", CreditCard, t("pay_online")]] : []), ["cod", Banknote, t("cod")], ["store", Store, t("store")]];
   return (
     <div className="container-x grid gap-6 py-6 lg:grid-cols-3" data-testid="checkout-page">
       <div className="space-y-5 lg:col-span-2">
@@ -129,8 +117,6 @@ export default function Checkout() {
       </div>
       <div><PriceBox pr={pr}>{pr && !pr.serviceable && method !== "store" && <p className="mt-2 text-xs text-red-600">{t("not_serviceable")}</p>}
         <button disabled={busy || !pr} onClick={place} className="btn-primary mt-4 w-full !py-3" data-testid="place-order-btn">{busy ? "..." : `${t("place_order")} · ${pr ? inr(pr.total) : ""}`}</button></PriceBox></div>
-      {demo && <DemoPay open amount={demo.amount} onClose={() => { toast.message("Payment pending. Retry from the order page."); finish(demo.order); }}
-        onPay={async () => { try { await api.post(`/orders/${demo.order.id}/pay/demo`); toast.success("Payment successful"); finish(demo.order); } catch (e) { toast.error(errMsg(e)); } }} />}
     </div>
   );
 }

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import api, { errMsg } from "@/lib/api";
 import { useApp, useTitle } from "@/lib/store";
 
 export default function Login() {
-  const { t, login, user } = useApp();
+  const { t, login, user, settings, lang } = useApp();
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const next = sp.get("next") || "/account";
@@ -13,13 +13,14 @@ export default function Login() {
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [step, setStep] = useState(1);
-  const [hint, setHint] = useState("");
+  const [wait, setWait] = useState(0);
   const [busy, setBusy] = useState(false);
+  useEffect(() => { if (wait <= 0) return undefined; const id = setTimeout(() => setWait(wait - 1), 1000); return () => clearTimeout(id); }, [wait]);
   useTitle(t("login"));
   if (user) return <Navigate to={next} replace />;
   const send = async () => {
     setBusy(true);
-    try { const { data } = await api.post("/auth/otp/send", { phone }); setHint(data.hint || ""); setStep(2); toast.success("OTP sent"); }
+    try { const { data } = await api.post("/auth/otp/send", { phone }); setWait(data.resend_after || 60); setStep(2); toast.success("OTP sent"); }
     catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
   };
   const verify = async () => {
@@ -36,19 +37,19 @@ export default function Login() {
     <div className="container-x grid min-h-[70vh] place-items-center py-10" data-testid="login-page">
       <div className="card w-full max-w-md overflow-hidden">
         <div className="relative bg-[#7A1F1F] p-6 text-center grain">
-          <img src="/logo.svg" alt="Mauli Furniture Mall" className="relative mx-auto h-16 w-16" />
-          <h1 className="relative mt-3 font-deva text-2xl !text-white">माऊली फर्निचर मॉल</h1>
+          <img src={settings.logo || "/logo.svg"} alt={settings.shop_name || "logo"} className="relative mx-auto h-16 w-16 rounded-xl object-contain" />
+          <h1 className="relative mt-3 font-deva text-2xl !text-white">{(lang === "mr" && settings.shop_name_mr) || settings.shop_name}</h1>
           <p className="relative text-sm text-[#F5B800]">{t("login_sub")}</p>
         </div>
         <div className="space-y-4 p-6">
-          {step === 1 ? <>
+          {settings.sms_enabled === false ? <p className="rounded-xl bg-[#fffbeb] p-3 text-sm text-[#7A1F1F]" data-testid="otp-not-configured">{lang === "mr" ? "OTP लॉगिन सध्या उपलब्ध नाही. कृपया Google ने लॉगिन करा." : "Phone OTP login is not available right now. Please continue with Google."}</p> : step === 1 ? <>
             <label className="label">{t("phone")}</label>
             <div className="flex items-center gap-2"><span className="rounded-xl border bg-[#fbf3ea] px-3 py-2.5 text-sm">+91</span>
-              <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className="input" placeholder="9999999999" data-testid="login-phone-input" /></div>
+              <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className="input" placeholder="98XXXXXXXX" data-testid="login-phone-input" /></div>
             <button disabled={phone.length !== 10 || busy} onClick={send} className="btn-primary w-full !py-3" data-testid="send-otp-btn">{t("send_otp")}</button>
           </> : <>
-            <p className="text-sm">OTP sent to +91 {phone} <button onClick={() => setStep(1)} className="ml-1 font-semibold text-[#E8671B]" data-testid="change-phone-btn">Change</button></p>
-            {hint && <p className="rounded-xl bg-[#fffbeb] p-2 text-xs text-[#7A1F1F]" data-testid="otp-hint">{hint}</p>}
+            <p className="text-sm">OTP sent to +91 {phone} <button onClick={() => setStep(1)} className="ml-1 font-semibold text-[#E8671B]" data-testid="change-phone-btn">Change</button>
+              <button disabled={wait > 0 || busy} onClick={send} className="ml-2 font-semibold text-[#7A1F1F] disabled:text-gray-400" data-testid="resend-otp-btn">{wait > 0 ? `Resend (${wait}s)` : "Resend"}</button></p>
             <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" className="input text-center text-2xl tracking-[0.5em]" placeholder="••••••" data-testid="otp-input" />
             <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder={`${t("name")} (optional)`} data-testid="login-name-input" />
             <button disabled={otp.length !== 6 || busy} onClick={verify} className="btn-primary w-full !py-3" data-testid="verify-otp-btn">{t("verify")}</button>

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Calculator, Users, Tags, Star, MessageSquare, Bell, BarChart3, Settings, Menu, LogOut, KeyRound, ExternalLink } from "lucide-react";
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Calculator, Users, Tags, Star, MessageSquare, Bell, BarChart3, Settings, Menu, LogOut, KeyRound, ExternalLink, Plug } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 const FILES = {
@@ -23,12 +23,13 @@ const Notifications = A("Notifications", "Manage");
 const Reports = A("Reports", "Reports");
 const SettingsPage = A("SettingsPage", "Settings");
 const ChangePassword = A("ChangePassword", "Settings");
+const Integrations = A("Integrations", "Settings");
 
 const S = ["owner", "manager", "staff"], M = ["owner", "manager"];
 export const NAV = [
   ["", "Dashboard", LayoutDashboard, S], ["products", "Products", Package, S], ["inventory", "Inventory", Boxes, S], ["orders", "Orders", ShoppingBag, [...S, "delivery"]],
   ["pos", "POS / Walk-in", Calculator, S], ["customers", "Customers", Users, S], ["manage", "Catalog & Store", Tags, M], ["reviews", "Reviews & Q&A", Star, S],
-  ["enquiries", "Enquiries", MessageSquare, S], ["notifications", "Notifications", Bell, M], ["reports", "Reports", BarChart3, M], ["settings", "Settings & Staff", Settings, M],
+  ["enquiries", "Enquiries", MessageSquare, S], ["notifications", "Notifications", Bell, M], ["reports", "Reports", BarChart3, M], ["settings", "Settings & Staff", Settings, M], ["integrations", "Integrations", Plug, M],
   ["password", "Change Password", KeyRound, [...S, "delivery"]],
 ];
 
@@ -38,6 +39,10 @@ export default function AdminApp() {
   const [open, setOpen] = useState(false);
   if (user === undefined) return <div className="p-10"><div className="skeleton h-40" /></div>;
   if (!user || user.role === "customer") return <Navigate to="/admin/login" replace />;
+  if (user.must_change_password) return (
+    <div className="grid min-h-screen place-items-center bg-[#f7f2ec] p-4" data-testid="force-password-change"><div className="w-full max-w-md">
+      <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">For security, please set a new password before using the admin panel. / सुरक्षिततेसाठी नवीन पासवर्ड ठेवा.</p>
+      <Suspense fallback={<div className="skeleton h-60" />}><ChangePassword /></Suspense></div></div>);
   const items = NAV.filter((n) => n[3].includes(user.role));
   const can = (path) => items.some((n) => n[0] === path);
   const G = (path, el) => (can(path) ? el : <Navigate to={user.role === "delivery" ? "/admin/orders" : "/admin"} replace />);
@@ -66,7 +71,7 @@ export default function AdminApp() {
             <Route path="inventory" element={G("inventory", <Inventory />)} /><Route path="orders" element={<Orders />} /><Route path="pos" element={G("pos", <POS />)} />
             <Route path="customers" element={G("customers", <Customers />)} /><Route path="manage" element={G("manage", <Manage />)} /><Route path="reviews" element={G("reviews", <Moderation />)} />
             <Route path="enquiries" element={G("enquiries", <Enquiries />)} /><Route path="notifications" element={G("notifications", <Notifications />)} /><Route path="reports" element={G("reports", <Reports />)} />
-            <Route path="settings" element={G("settings", <SettingsPage />)} /><Route path="password" element={<ChangePassword />} />
+            <Route path="settings" element={G("settings", <SettingsPage />)} /><Route path="password" element={<ChangePassword />} /><Route path="integrations" element={G("integrations", <Integrations />)} />
           </Routes></Suspense></main>
       </div>
     </div>

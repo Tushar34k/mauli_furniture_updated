@@ -43,17 +43,17 @@ export function Showroom() {
           <p className="flex gap-3"><Phone className="text-[#E8671B]" />{s.phone}</p>
           <div className="flex flex-wrap gap-2 pt-2">
             <a href={`tel:${(s.phone || "").replace(/\s/g, "")}`} className="btn-primary" data-testid="showroom-call-btn"><Phone size={16} />{t("call")}</a>
-            <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="btn bg-[#25D366] text-white hover:bg-[#1da851]" data-testid="showroom-whatsapp-btn"><MessageCircle size={16} />{t("whatsapp")}</a>
+            {s.whatsapp && <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="btn bg-[#25D366] text-white hover:bg-[#1da851]" data-testid="showroom-whatsapp-btn"><MessageCircle size={16} />{t("whatsapp")}</a>}
             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address || "")}`} target="_blank" rel="noreferrer" className="btn-outline" data-testid="showroom-directions-btn"><MapPin size={16} />Directions</a></div>
         </div>
-        <iframe title="map" src={s.map_embed} className="h-80 w-full rounded-3xl border-0 lg:h-full" loading="lazy" data-testid="showroom-map" />
+        {s.map_embed ? <iframe title="map" src={s.map_embed} className="h-80 w-full rounded-3xl border-0 lg:h-full" loading="lazy" data-testid="showroom-map" /> : <div className="grid h-80 place-items-center rounded-3xl bg-[#fbf3ea] text-sm text-gray-500" data-testid="showroom-map-missing"><MapPin className="text-[#E8671B]" />{s.address}</div>}
       </div>
     </div>
   );
 }
 
 export function Enquiry() {
-  const { t, user } = useApp();
+  const { t, user, settings } = useApp();
   const [f, setF] = useState({ name: user?.name || "", phone: user?.phone || "", furniture_type: "", size: "", budget: "", description: "" });
   const [photo, setPhoto] = useState(null);
   const [done, setDone] = useState(false);
@@ -72,7 +72,7 @@ export function Enquiry() {
       <form onSubmit={submit} className="card mt-5 grid gap-4 p-6 sm:grid-cols-2">
         {inp("name", t("name"), { required: true })}{inp("phone", t("phone"), { required: true, maxLength: 10, inputMode: "numeric" })}
         {inp("furniture_type", "Furniture type (Sofa, Bed...)")}{inp("size", t("size"), { placeholder: "e.g. 6ft x 3ft" })}{inp("budget", t("budget"), { placeholder: "₹" })}
-        <div><label className="label">{t("photo")}</label><label className="btn-outline w-full cursor-pointer"><Upload size={16} />{photo ? photo.name.slice(0, 18) : t("photo")}<input type="file" accept="image/*" hidden onChange={(e) => setPhoto(e.target.files[0])} data-testid="enquiry-photo" /></label></div>
+        {settings.upload_enabled && <div><label className="label">{t("photo")}</label><label className="btn-outline w-full cursor-pointer"><Upload size={16} />{photo ? photo.name.slice(0, 18) : t("photo")}<input type="file" accept="image/*" hidden onChange={(e) => setPhoto(e.target.files[0])} data-testid="enquiry-photo" /></label></div>}
         <div className="sm:col-span-2"><label className="label">{t("description")}</label><textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} className="input min-h-[110px]" data-testid="enquiry-description" /></div>
         <button disabled={busy} className="btn-primary sm:col-span-2 !py-3" data-testid="enquiry-submit-btn">{t("submit")}</button>
       </form>

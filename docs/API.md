@@ -6,7 +6,8 @@ Auth: `Authorization: Bearer <token>` (JWT, 7 days). Errors: `{"detail": "..."}`
 ## Auth
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| POST | /auth/otp/send | `{phone}` | test mode → OTP 123456 |
+| POST | /auth/otp/send | `{phone}` | real SMS via MSG91/Twilio; 503 if not configured; 60 s cooldown |
+| POST | /auth/refresh | — | new token |
 | POST | /auth/otp/verify | `{phone, otp, name?}` | → `{token, user}`; creates customer |
 | POST | /auth/google | `{session_id}` | Emergent Google Auth exchange → `{token, user}` |
 | POST | /auth/staff/login | `{email, password}` | staff/admin; 5 failures → 15 min lock |
@@ -25,9 +26,11 @@ Auth: `Authorization: Bearer <token>` (JWT, 7 days). Errors: `{"detail": "..."}`
 | Method | Path | Notes |
 |---|---|---|
 | POST | /cart/price | `{items:[{product_id, qty, variant}], coupon, pincode, payment_method}` → totals, GST, delivery, ETA |
-| POST | /orders | checkout (guest or logged in): `{items, coupon, address{name,phone,line1,line2,city,state,pincode}, email, slot, delivery_date, payment_method: razorpay|cod|store}` → `{order, payment}`; `payment.mode` = `razorpay` (key_id, rzp_order_id) or `demo` |
+| POST | /orders | checkout (guest or logged in): `{items, coupon, address{name,phone,line1,line2,city,state,pincode}, email, slot, delivery_date, payment_method: razorpay|cod|store}` → `{order, payment}`; `payment.mode` = `razorpay` (key_id, rzp_order_id); razorpay rejected if keys missing |
 | POST | /orders/{id}/pay/verify | Razorpay `{razorpay_payment_id, razorpay_order_id, razorpay_signature}` (HMAC verified) |
-| POST | /orders/{id}/pay/demo | only when no Razorpay keys configured |
+| POST | /orders/{id}/pay/retry | new Razorpay order for a pending payment |
+| POST | /payments/razorpay/webhook | Razorpay webhook (X-Razorpay-Signature, RAZORPAY_WEBHOOK_SECRET) |
+| GET | /health | DB health check |
 | GET | /orders | my orders |
 | GET | /orders/{id}?phone= | owner, staff, or guest with matching phone |
 | POST | /orders/{id}/cancel | before shipping; restocks |
@@ -48,4 +51,4 @@ Auth: `Authorization: Bearer <token>` (JWT, 7 days). Errors: `{"detail": "..."}`
 - Moderation: `GET /reviews?status`, `PUT /reviews/{id} {status}`, `DELETE /reviews/{id}`, `GET /questions`, `PUT /questions/{id} {answer}`, `GET /enquiries`, `PUT /enquiries/{id}`
 - Notifications [o,m]: `POST /broadcast {title, message, channels}`, `GET /notification-logs`; `GET /error-logs` [owner]
 - Settings: `GET /settings` [o,m], `PUT /settings` [owner]; Staff: `GET /staff`, `POST /staff`, `PUT /staff/{id}` [owner]
-- `POST /upload` (multipart `files`) · `GET /reports/{sales|gst|stock|profit|customers}?start&end&fmt=json|xlsx|pdf` [o,m]
+- `POST /upload` (multipart `files`; JPG/PNG/WEBP/GIF/PDF, max 8 MB, stored on Cloudinary/S3) · `GET /integrations` [o,m] · `GET /export/{products|orders|customers|stock_movements|enquiries}` [owner] · `POST /orders/{id}/refund` [o,m] · `GET /reports/{sales|gst|stock|profit|customers}?start&end&fmt=json|xlsx|pdf` [o,m]

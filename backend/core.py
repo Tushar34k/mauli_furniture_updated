@@ -79,6 +79,8 @@ def require(*roles):
         u = await get_user(request)
         if u['role'] not in allowed:
             raise HTTPException(403, "Permission denied")
+        if u.get('must_change_password') and not request.url.path.endswith('/auth/change-password'):
+            raise HTTPException(403, "PASSWORD_CHANGE_REQUIRED")
         return u
     return dep
 
@@ -96,29 +98,36 @@ def razorpay_keys(s: dict):
     return kid, sec
 
 
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"}
+
+
 async def save_upload(f: UploadFile, folder: str = 'media') -> str:
+    from integrations import store_file
     data = await f.read()
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "File too large (max 8MB)")
-    backend = os.environ.get('STORAGE_BACKEND', 'local')
-    if backend != 'local':
-        raise HTTPException(500, f"Storage backend '{backend}' not configured. See GO_LIVE_CHECKLIST.md")
-    d = UPLOAD_DIR / folder
-    d.mkdir(exist_ok=True, parents=True)
     ct = (f.content_type or '')
+    if ct not in ALLOWED_TYPES:
+        raise HTTPException(400, "Only JPG, PNG, WEBP, GIF images or PDF files are allowed")
     if ct.startswith('image/'):
         try:
+            img = Image.open(io.BytesIO(data))
+            img.verify()
             img = Image.open(io.BytesIO(data)).convert('RGB')
         except Exception:
             raise HTTPException(400, "Invalid image file")
         img.thumbnail((1400, 1400))
-        name = f"{uid()}.jpg"
-        img.save(d / name, 'JPEG', quality=82, optimize=True)
+        buf = io.BytesIO()
+        img.save(buf, 'JPEG', quality=82, optimize=True)
+        data, ct, name = buf.getvalue(), 'image/jpeg', f"{uid()}.jpg"
     else:
-        ext = Path(f.filename or 'file').suffix[:6] or '.bin'
-        name = f"{uid()}{ext}"
-        (d / name).write_bytes(data)
-    return f"/api/uploads/{folder}/{name}"
+        if not data.startswith(b'%PDF'):
+            raise HTTPException(400, "Invalid PDF file")
+        name = f"{uid()}.pdf"
+    try:
+        return await store_file(data, name, ct, folder)
+    except RuntimeError as e:
+        raise HTTPException(503, f"{e}. Admin > Integrations / स्टोरेज सेट केलेले नाही.")
 
 
 _hits = defaultdict(list)
