@@ -93,7 +93,7 @@ export function Header() {
   return (
     <header className="no-print sticky top-0 z-40 border-b border-[#efe2d4] bg-[#FFFAF5]/90 backdrop-blur-xl">
       <div className="bg-[#7A1F1F] py-1.5 text-center text-[11px] sm:text-xs text-white/90" data-testid="announcement-bar">
-        {settings.announcement ? <span className="text-[#F5B800] font-semibold">{settings.announcement}</span> : <>{t("free_installation")} · {t("easy_returns")} · {t("secure_pay")}</>}
+        {settings.announcement ? <span className="text-[#F5B800] font-semibold">{settings.announcement}</span> : <>{t("free_installation")} · {t("easy_returns")}{settings.razorpay_enabled ? <> · {t("secure_pay")}</> : null}</>}
       </div>
       <div className="container-x flex items-center gap-3 py-3 sm:gap-6">
         <Logo />
@@ -146,7 +146,7 @@ export function Footer() {
   return (
     <footer className="no-print relative mt-10 overflow-hidden bg-[#7A1F1F] text-white/85 grain" data-testid="footer">
       <div className="container-x relative grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
-        <div><Logo light /><p className="mt-4 text-sm leading-relaxed text-white/70">{t("trusted")} · {t("free_installation")} · {t("easy_returns")}</p></div>
+        <div className="relative"><Logo light /><p className="mt-4 text-sm leading-relaxed text-white/70">{t("trusted")} · {t("free_installation")} · {t("easy_returns")}</p></div>
         <div><h4 className="mb-3 !text-[#F5B800]">{t("categories")}</h4>
           {["sofa", "bed", "dining", "wardrobe", "mattress"].map((c) => <Link key={c} to={`/products?category=${c}`} className="block py-1 text-sm hover:text-[#F5B800]">{t(`cat_${c}`)}</Link>)}</div>
         <div><h4 className="mb-3 !text-[#F5B800]">Info</h4>

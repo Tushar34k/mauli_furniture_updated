@@ -121,7 +121,7 @@ function Info({ p }) {
     <div className="space-y-4" data-testid="product-info">
       <div><p className="text-xs font-bold uppercase tracking-widest text-[#E8671B]">{p.brand}</p>
         <h1 className="mt-1 text-2xl sm:text-3xl" data-testid="product-title">{L(p, "name")}</h1>
-        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500"><RatingPill value={p.rating} />{p.reviews_count} reviews · SKU {p.sku}</div></div>
+        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">{p.reviews_count > 0 && <RatingPill value={p.rating} />}{p.reviews_count > 0 ? `${p.reviews_count} reviews · ` : ""}SKU {p.sku}</div></div>
       <div><div className="flex flex-wrap items-baseline gap-3"><span className="text-3xl font-extrabold" data-testid="product-price">{inr(p.price + delta)}</span>
         <span className="text-gray-400 line-through">{t("mrp")} {inr(p.mrp + delta)}</span><span className="badge-deal">{p.discount}% {t("off")}</span></div>
         <p className="text-xs text-gray-500">{t("incl_gst", { g: p.gst })}</p></div>
@@ -142,7 +142,7 @@ function Info({ p }) {
       <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
         {[[Wrench, p.assembly === "diy" ? t("diy") : t("free_installation")], [ShieldCheck, `${t("warranty")}: ${p.warranty}`], [Truck, t("delivers_in", { d: p.delivery_days })], [CreditCard, t("emi")]].map(([I, s], k) => (
           <div key={k} className="flex items-center gap-2 rounded-xl bg-[#fbf3ea] p-3"><I size={17} className="shrink-0 text-[#E8671B]" />{s}</div>))}</div>
-      {settings.emi_text && <p className="rounded-xl border border-dashed border-[#F5B800] bg-[#fffbeb] p-3 text-xs" data-testid="emi-info">{settings.emi_text}</p>}
+      {settings.emi_text && settings.razorpay_enabled && <p className="rounded-xl border border-dashed border-[#F5B800] bg-[#fffbeb] p-3 text-xs" data-testid="emi-info">{settings.emi_text}</p>}
     </div>
   );
 }

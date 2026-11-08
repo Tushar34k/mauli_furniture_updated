@@ -121,7 +121,10 @@ SORTS = {"price_asc": ("price", 1), "price_desc": ("price", -1), "newest": ("cre
 @router.get("/products")
 async def products(request: Request):
     a = dict(request.query_params)
-    page, limit = max(int(a.get("page", 1)), 1), min(int(a.get("limit", 12)), 60)
+    try:
+        page, limit = max(int(a.get("page", 1)), 1), max(min(int(a.get("limit", 12)), 60), 1)
+    except ValueError:
+        raise HTTPException(400, "page and limit must be numbers")
     q = build_query(a)
     docs = await db.products.find(q, PUB).to_list(5000)
     term = (a.get("q") or "").strip()
@@ -150,7 +153,7 @@ async def suggest(q: str = ""):
         return {"products": [], "categories": []}
     docs = await db.products.find({"active": True}, {"_id": 0, "name": 1, "name_mr": 1, "slug": 1, "images": 1, "price": 1, "category": 1, "brand": 1, "material": 1, "color": 1}).to_list(5000)
     scored = sorted(((fuzzy_score(p, q), p) for p in docs), key=lambda x: -x[0])
-    prods = [{"name": p["name"], "name_mr": p["name_mr"], "slug": p["slug"], "image": p["images"][0], "price": p["price"]} for s, p in scored if s >= 75][:6]
+    prods = [{"name": p["name"], "name_mr": p["name_mr"], "slug": p["slug"], "image": (p.get("images") or [""])[0], "price": p["price"]} for s, p in scored if s >= 75][:6]
     cats = await db.categories.find({}, {"_id": 0, "slug": 1, "name": 1, "name_mr": 1}).to_list(50)
     cats = [c for c in cats if fuzz.partial_ratio(q.lower(), c["name"].lower()) >= 75 or q in c["name_mr"]][:3]
     return {"products": prods, "categories": cats}

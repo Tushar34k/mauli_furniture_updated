@@ -1,0 +1,58 @@
+{
+  "summary": "Tested the production build end to end (backend pytest: 28 tests in /app/backend/tests/test_mauli_prod.py; Playwright UI at 1920, 412 and 360 px). The reported eslint bug is FIXED: the frontend compiles with warnings only, no overlay, and /enquiry and /product/<slug> render. Working: Owner forced password change (API 403 PASSWORD_CHANGE_REQUIRED, then change, UI force-password-change screen), staff/delivery/manager role permissions and UI redirects, delivery sees only assigned orders, Integrations page (6 'Not configured' + google/maps connected, EN+MR help), xlsx exports, OTP 503 plus login notice and Google button, no '123456'/demo text, online payment hidden, guest COD order via UI and COD/store/customer orders via API, invoice/packing PDFs, /pay/demo 404, cross-customer order 403, concurrent last-unit (exactly 1 of 4 succeeds), cancel restock (no double restock), POS stock decrement/oversell block, forward-only status, return approve->refunded, refund of cancelled+paid order (API+UI), uploads 503/400 (type, size), product via image URL, CRUD (coupons/pincodes/slots/banners), bulk CSV, bulk edit, stock adjust/movements/valuation, reviews/QA/enquiry moderation, broadcast logs 'skipped: ... not configured', reports json/xlsx/pdf, Settings changes reflected in header/footer/showroom/privacy, map and WhatsApp FAB hidden when empty, search suggest and typo tolerance, sort, infinite scroll, wishlist, compare, language toggle, account and delete account, NoSQL-injection params, brute-force lockout (5x401 then 429), bcrypt $2b$, health/HSTS/CSP on API, sitemap/manifest/sw.js, no horizontal overflow at 360/412. 2 backend bugs found (stock leak on rejected razorpay order; 500 on non-numeric page).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/orders (payment_method=razorpay)", "issue": "Stock leaks. In create_order, stock is taken off via adjust_stock BEFORE the razorpay_keys() check (and before rzp_order). The 400 'Online payment is not available' (and any 502 gateway error) is raised with no rollback, so stock is permanently reduced and a 'sale' stock_movement is written with no order. Anyone can drain inventory by POSTing razorpay orders while Razorpay is not configured. Reproduced: product stock 2 -> 1 after a rejected request.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/products?page=abc (or limit=x)", "issue": "500 ValueError from int(a.get('page')) in routes_store.products. Should be 400/422 or clamp to defaults."},
+      {"endpoint": "POST /api/admin/pos/sale", "issue": "Stock is checked with a plain read, then the order is inserted, and adjust_stock is called last without checking its return value. A concurrent sale of the last unit gives a recorded POS order with no stock decrement and no error."},
+      {"endpoint": "POST /api/admin/stock/adjust (out/damage)", "issue": "The check-then-update is not atomic (adjust_stock only guards stock>=qty for type 'sale'), so concurrent adjustments can push stock negative."},
+      {"endpoint": "PUT /api/admin/orders/{id}", "issue": "Staff role (ALL) can set payment_status to paid/refunded/refund_pending directly, which skips the refund flow and its manager permission. Also there is no 404 for an unknown id (returns null)."},
+      {"endpoint": "GET /api/products/suggest", "issue": "p['images'][0] raises IndexError (500) if any active product has an empty images list. Admin ProductIn allows images=[]."},
+      {"endpoint": "POST /api/products/{pid}/questions", "issue": "Does not check that the product exists, so orphan questions can be created."},
+      {"endpoint": "ProductIn validation", "issue": "No check that price <= mrp. Seed product 'Royal Teak 3 Seater Sofa' (MFM-SOF-1000) currently has price 813098 and mrp 49999. Data defect, most likely from an earlier bulk price edit; not caused by this run."},
+      {"endpoint": "PUT /api/admin/staff/{sid}", "issue": "The owner can change their own role or another account's role to a non-owner role, which can leave the store with no owner."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin order sheet Timeline", "issue": "For cancelled orders the Timeline component shows only a 'Cancelled' box. The placed/confirmed history and the 'by' audit data are hidden from admins.", "selector": "[data-testid='order-cancelled']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checkout", "issues": ["Delivery date uses the browser's native date picker (mm/dd/yyyy) instead of the shadcn Calendar", "City/State/Email (optional) labels are English in Marathi mode"]},
+      {"screen": "Login", "issues": ["The subtitle 'OTP ने सुरक्षित लॉगिन करा' still promotes OTP even though OTP is disabled"]},
+      {"screen": "Storefront copy", "issues": ["The top bar says 'सुरक्षित पेमेंट' and the PDP EMI box says 'UPI, cards, net banking & wallets accepted' while online payment is not configured. This is misleading."]},
+      {"screen": "Admin Integrations", "issues": ["Titles are auto-capitalized keys ('Sms Otp', 'Push Fcm', 'Whatsapp Api', '(.Xlsx)'). Use proper labels: SMS OTP, Push (FCM), WhatsApp API, .xlsx"]},
+      {"screen": "Misc", "issues": ["Enquiry label 'Furniture type (Sofa, Bed...)' and Account 'No orders yet' are not translated in MR", "Delete account uses a native window.confirm instead of a styled dialog", "Admin orders table has no empty-state text", "Product cards show a '0 ★' badge for unrated products", "data-testid 'header-logo' is duplicated in the footer"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_mauli_prod.py", "/app/backend/tests/conftest.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "routes_orders.create_order: when payment_method=='razorpay', validate razorpay_keys() BEFORE the stock-deduction loop. Wrap rzp_order in try/except and roll back stock (adjust_stock +qty 'return') on any failure.",
+    "routes_store.products: parse page/limit safely (try/except, default 1/12) to avoid 500",
+    "POS sale: deduct stock atomically first (adjust_stock returns None means 400 plus rollback), then insert the order",
+    "stock_adjust: use a conditional atomic update ({'stock': {'$gte': qty}}) for out/damage",
+    "Restrict payment_status edits in PUT /admin/orders to owner/manager",
+    "Guard suggest against empty images; validate price <= mrp; fix the Royal Teak sofa price (813098 > MRP 49999)",
+    "Frontend: shadcn calendar for delivery date, fix the misleading OTP/payment copy, and the missing MR translations",
+    "Optional hardening: CSP/HSTS are only set on /api responses. The storefront HTML has no CSP/HSTS headers; add a CSP meta tag in public/index.html or configure it at the hosting layer."
+  ],
+  "critical_code_review_comments": [
+    "create_order raises HTTPException after mutating stock (razorpay branch). Any post-deduction exception must compensate.",
+    "routes_admin.py is 715 lines; split it (orders/catalog/staff/reports).",
+    "The customer JWT is stored in localStorage (mfm_token), not an httpOnly cookie. Acceptable with a strict CSP, but the storefront has no CSP.",
+    "PUT /admin/settings does a $set of the raw body (owner only): any arbitrary key can be persisted. Whitelist the keys.",
+    "Deleting a product leaves orphan stock_movements, reviews and questions.",
+    "cancel_and_restock is not idempotent under concurrency: two simultaneous cancels can both pass the status check and restock twice. Use a conditional update on status first."
+  ],
+  "updated_files": ["/app/backend/tests/conftest.py", "/app/backend/tests/test_mauli_prod.py (new; replaces obsolete test_mauli_api.py, which was moved to /tmp because it used removed demo creds)", "/app/frontend/src/admin/Products.jsx (added data-testid pf-image-url and pf-image-url-add only)"],
+  "success_rate": {"backend": "93% (26/28)", "frontend": "97% (all requested flows working; only design/copy nits)"},
+  "test_credentials": "Owner tusharkokane366@gmail.com, password now TestOwner#2026 (must_change_password=false). The main agent should reset it. Customer tokens are minted in conftest via JWT_SECRET for TEST_ customer docs.",
+  "seed_data_creation": "None kept. All TEST_ users, products, orders, coupons, pincodes, slots, banners, enquiries, reviews, questions, notifications and logs created in this run were deleted by id. The DB is back to 1 user (owner), 44 products, 0 orders. Sample product stock was not touched. 5 pre-existing orphan stock_movements named 'TEST_Chair Pytest', 'TEST_UI Stool' and 'TEST_CSV Table' from earlier runs remain; they were not created by this run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with: cd /app/backend && pytest tests/ (xdist -n 2 works once the owner pw is TestOwner#2026; for a fresh env OWNER_PASSWORD, run -n 0 the first time so a single worker does the forced change). Wait 60 s between reruns: there are rate limits of 20 orders/min/IP and 20 logins/min/IP. Expected failures until fixed: test_razorpay_rejected_and_stock_unchanged, test_nosql_injection (page=abc). Frontend localStorage token key is 'mfm_token'.",
+  "rca of the issue": "Stock leak: routes_orders.py lines 142-154. The loop calls adjust_stock(-qty) for each line, then the `if body.payment_method == 'razorpay'` branch calls razorpay_keys(); with no keys it raises HTTPException(400) without rolling back `done`. Repro: POST /api/orders {items:[{product_id, qty:1}], address, pincode:'411001', payment_method:'razorpay'} gives 400, but the product stock drops by 1. Fix: move the key check above the loop, and wrap rzp_order in try/except with the same rollback used for out-of-stock."
+}

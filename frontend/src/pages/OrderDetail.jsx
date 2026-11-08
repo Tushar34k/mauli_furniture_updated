@@ -15,7 +15,9 @@ export function Timeline({ o, en }) {
   const { t: tt } = useApp();
   const t = en ? (k) => translate("en", k) : tt;
   const at = Object.fromEntries((o.timeline || []).map((x) => [x.status, x.at]));
-  if (o.status === "cancelled") return <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700" data-testid="order-cancelled">{t("cancelled")}</p>;
+  if (o.status === "cancelled") return (
+    <div data-testid="order-cancelled"><p className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t("cancelled")}</p>
+      {(o.timeline || []).map((x, i) => <p key={i} className="text-xs text-gray-600">{t(x.status)} · {new Date(x.at).toLocaleString("en-IN")}{x.note ? ` · ${x.note}` : ""}{x.by ? ` · ${x.by}` : ""}</p>)}</div>);
   const cur = FLOW.indexOf(o.status);
   return (
     <ol className="relative ml-3 border-l-2 border-[#f0e2d3]" data-testid="order-timeline">

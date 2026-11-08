@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook
 from core import db, uid, now, require, save_upload, get_settings, hash_pw, STAFF_ROLES
-from routes_orders import adjust_stock, next_order_no, cancel_and_restock, FLOW, razorpay_refund
+from routes_orders import adjust_stock, next_order_no, cancel_and_restock, FLOW, razorpay_refund, reserve_lines
 from routes_store import discount_pct
 from reports import invoice_pdf, build_report, to_xlsx, to_pdf
 import notify
@@ -258,6 +258,8 @@ async def stock_adjust(body: StockAdjust, u=Depends(ALL)):
     if p["stock"] + delta < 0:
         raise HTTPException(400, "Stock cannot go below zero")
     p = await adjust_stock(body.product_id, delta, body.type, body.note, u["name"])
+    if not p:
+        raise HTTPException(400, "Stock cannot go below zero")
     return {"stock": p["stock"]}
 
 
@@ -353,7 +355,10 @@ class OrderPatch(BaseModel):
 
 @router.put("/orders/{oid}")
 async def patch_order(oid: str, body: OrderPatch, u=Depends(ALL)):
+    await _order(oid, u)
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "payment_status" in upd and u["role"] not in ("owner", "manager"):
+        raise HTTPException(403, "Only Owner/Manager can change payment status")
     await db.orders.update_one({"id": oid}, {"$set": upd})
     return await db.orders.find_one({"id": oid}, {"_id": 0})
 
@@ -469,9 +474,8 @@ async def pos_sale(body: PosSale, u=Depends(ALL)):
              "gst_total": round(sum(l["price"] * l["qty"] * ratio * l["gst"] / (100 + l["gst"]) for l in lines), 2), "delivery": 0, "total": round(sub - disc, 2),
              "payment_method": body.payment_mode, "payment_status": "paid", "status": "delivered", "assigned_to": "", "notes": f"POS by {u['name']}",
              "timeline": [{"status": "delivered", "at": now(), "note": "Showroom sale"}], "return_request": None, "created_at": now()}
+    await reserve_lines(lines, "POS sale", u["name"], order["order_no"])
     await db.orders.insert_one(dict(order))
-    for l in lines:
-        await adjust_stock(l["product_id"], -l["qty"], "sale", "POS sale", u["name"], order["order_no"])
     order.pop("_id", None)
     return order
 

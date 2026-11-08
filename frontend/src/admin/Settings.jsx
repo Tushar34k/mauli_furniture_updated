@@ -92,6 +92,8 @@ export function ChangePassword() {
   );
 }
 
+const LABELS = { sms_otp: "SMS OTP", razorpay: "Razorpay payments", email: "Email", push_fcm: "Push (FCM)", whatsapp_api: "WhatsApp API", storage: "File storage", google_login: "Google login", maps: "Google Maps" };
+
 export function Integrations() {
   const { user } = useApp();
   const [rows, setRows] = useState(null);
@@ -102,13 +104,13 @@ export function Integrations() {
       <PageHead title="Integrations / इंटिग्रेशन" />
       {!rows ? <div className="skeleton h-60" /> : <div className="grid gap-3 md:grid-cols-2">{rows.map((r) => (
         <div key={r.key} className="card space-y-2 p-4 text-sm" data-testid={`integration-${r.key}`}>
-          <div className="flex items-center justify-between"><b className="capitalize">{r.key.replace(/_/g, " ")}</b>
+          <div className="flex items-center justify-between"><b>{LABELS[r.key] || r.key}</b>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${r.configured ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`} data-testid={`integration-status-${r.key}`}>{r.configured ? `Connected (${r.provider})` : "Not configured"}</span></div>
           {!r.configured && <><p>{r.help_en}</p><p className="font-deva text-gray-600">{r.help_mr}</p></>}
           <p className="text-xs text-gray-500">.env: {r.env.join(" · ")}</p>
         </div>))}</div>}
       {user.role === "owner" && <div className="card space-y-3 p-5" data-testid="data-export"><h3 className="text-base">Data export (backup)</h3>
-        <div className="flex flex-wrap gap-2">{["products", "orders", "customers", "stock_movements", "enquiries"].map((c) => <button key={c} onClick={() => exp(c)} className="btn-outline !py-2 capitalize" data-testid={`export-${c}`}>{c.replace("_", " ")} (.xlsx)</button>)}</div></div>}
+        <div className="flex flex-wrap gap-2">{["products", "orders", "customers", "stock_movements", "enquiries"].map((c) => <button key={c} onClick={() => exp(c)} className="btn-outline !py-2" data-testid={`export-${c}`}>{c.replace("_", " ")} .xlsx</button>)}</div></div>}
     </div>
   );
 }

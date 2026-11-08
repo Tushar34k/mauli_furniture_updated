@@ -8,7 +8,7 @@ export function Logo({ compact = false, light = false }) {
   const { settings: s, lang } = useApp();
   const name = (lang === "mr" && s.shop_name_mr) || s.shop_name || "";
   return (
-    <Link to="/" className="flex items-center gap-2.5 shrink-0" data-testid="header-logo">
+    <Link to="/" className="flex items-center gap-2.5 shrink-0" data-testid={light ? "footer-logo" : "header-logo"}>
       <img src={s.logo || "/logo.svg"} alt={s.shop_name || "logo"} className="h-10 w-10 rounded-lg object-contain sm:h-11 sm:w-11" width="44" height="44" />
       {!compact && (
         <span className="leading-none">
@@ -52,7 +52,7 @@ export function ProductCard({ p, layout = "grid" }) {
         </div>
         <p className="text-[11px] uppercase tracking-wider text-[#E8671B] font-semibold">{p.brand}</p>
         <Link to={`/product/${p.slug}`} className="mt-0.5 line-clamp-2 text-sm sm:text-[15px] font-semibold text-[#2B2B2B] hover:text-[#7A1F1F]">{L(p, "name")}</Link>
-        <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-500"><RatingPill value={p.rating} /> ({p.reviews_count})</div>
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-500">{p.reviews_count > 0 ? <><RatingPill value={p.rating} /> ({p.reviews_count})</> : <span className="text-[#E8671B]">{t("new_arrivals")}</span>}</div>
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
           <span className="text-lg font-bold text-[#2B2B2B]">{inr(p.price)}</span>
           {p.mrp > p.price && <span className="text-xs text-gray-400 line-through">{inr(p.mrp)}</span>}

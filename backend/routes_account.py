@@ -133,6 +133,8 @@ async def add_review(pid: str, r: ReviewIn, user=Depends(get_user)):
 @router.post("/products/{pid}/questions")
 async def ask_question(pid: str, q: QuestionIn, request: Request):
     rate_limit(f"q:{client_ip(request)}", 10)
+    if not await db.products.find_one({"id": pid}, {"_id": 1}):
+        raise HTTPException(404, "Product not found")
     u = await optional_user(request)
     await db.questions.insert_one({"id": uid(), "product_id": pid, "name": (u or {}).get("name") or q.name, "question": q.question,
                                    "answer": "", "status": "pending", "created_at": now()})

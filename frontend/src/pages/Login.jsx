@@ -39,7 +39,7 @@ export default function Login() {
         <div className="relative bg-[#7A1F1F] p-6 text-center grain">
           <img src={settings.logo || "/logo.svg"} alt={settings.shop_name || "logo"} className="relative mx-auto h-16 w-16 rounded-xl object-contain" />
           <h1 className="relative mt-3 font-deva text-2xl !text-white">{(lang === "mr" && settings.shop_name_mr) || settings.shop_name}</h1>
-          <p className="relative text-sm text-[#F5B800]">{t("login_sub")}</p>
+          <p className="relative text-sm text-[#F5B800]">{settings.sms_enabled ? t("login_sub") : t("login")}</p>
         </div>
         <div className="space-y-4 p-6">
           {settings.sms_enabled === false ? <p className="rounded-xl bg-[#fffbeb] p-3 text-sm text-[#7A1F1F]" data-testid="otp-not-configured">{lang === "mr" ? "OTP लॉगिन सध्या उपलब्ध नाही. कृपया Google ने लॉगिन करा." : "Phone OTP login is not available right now. Please continue with Google."}</p> : step === 1 ? <>

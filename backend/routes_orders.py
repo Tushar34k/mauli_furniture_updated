@@ -52,13 +52,27 @@ async def next_order_no(prefix="MFM"):
 
 
 async def adjust_stock(pid, delta, mtype, note, by, ref=""):
-    q = {"id": pid, "stock": {"$gte": -delta}} if mtype == "sale" else {"id": pid}
+    q = {"id": pid, "stock": {"$gte": -delta}} if delta < 0 else {"id": pid}
     p = await db.products.find_one_and_update(q, {"$inc": {"stock": delta, "sold": -delta if mtype == "sale" else 0}},
                                               return_document=ReturnDocument.AFTER)
     if p:
         await db.stock_movements.insert_one({"id": uid(), "product_id": pid, "sku": p["sku"], "name": p["name"], "type": mtype, "qty": delta,
                                              "balance": p["stock"], "note": note, "ref": ref, "by": by, "created_at": now()})
     return p
+
+
+async def reserve_lines(lines, note, by, ref):
+    done = []
+    for l in lines:
+        if not await adjust_stock(l["product_id"], -l["qty"], "sale", note, by, ref):
+            await release_lines(done, ref)
+            raise HTTPException(400, f"{l['name']} just went out of stock")
+        done.append(l)
+
+
+async def release_lines(lines, ref):
+    for d in lines:
+        await adjust_stock(d["product_id"], d["qty"], "return", "Rollback", "system", ref)
 
 
 async def price_cart(body: CartIn, strict=False):
@@ -139,19 +153,18 @@ async def create_order(body: CheckoutIn, request: Request):
         "payment_method": body.payment_method, "payment_status": "pending", "status": "placed",
         "timeline": [{"status": "placed", "at": now(), "note": ""}], "assigned_to": "", "notes": "", "return_request": None, "created_at": now(),
     }
-    done = []
-    for l in pr["lines"]:
-        if not await adjust_stock(l["product_id"], -l["qty"], "sale", "Online order", "customer", order["order_no"]):
-            for d in done:
-                await adjust_stock(d["product_id"], d["qty"], "return", "Rollback", "system", order["order_no"])
-            raise HTTPException(400, f"{l['name']} just went out of stock")
-        done.append(l)
-    payment = None
+    payment, kid, sec = None, None, None
     if body.payment_method == "razorpay":
         kid, sec = razorpay_keys(s)
         if not kid:
             raise HTTPException(400, "Online payment is not available right now. Choose COD or Pay at Store.")
-        order["razorpay_order_id"], payment = await rzp_order(order, kid, sec)
+    await reserve_lines(pr["lines"], "Online order", "customer", order["order_no"])
+    if kid:
+        try:
+            order["razorpay_order_id"], payment = await rzp_order(order, kid, sec)
+        except HTTPException:
+            await release_lines(pr["lines"], order["order_no"])
+            raise
     await db.orders.insert_one(dict(order))
     order.pop("_id", None)
     if body.payment_method != "razorpay":
