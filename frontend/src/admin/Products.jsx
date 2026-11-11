@@ -28,7 +28,7 @@ export function Label({ p, onClose }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xs"><DialogHeader><DialogTitle>Barcode / QR label</DialogTitle></DialogHeader>
         <div id="qr-label" className="space-y-2 text-center" data-testid="qr-label"><QRCodeSVG value={p.barcode || p.sku} size={160} className="mx-auto" />
-          <p className="font-mono text-sm">{p.barcode}</p><p className="text-xs font-semibold">{p.name}</p><p className="text-xs">SKU {p.sku} Â· {inr(p.price)}</p></div>
+          <p className="font-mono text-sm">{p.barcode}</p><p className="text-xs font-semibold">{p.name}</p><p className="text-xs">SKU {p.sku} · {inr(p.price)}</p></div>
         <button onClick={() => window.print()} className="btn-primary">Print</button>
       </DialogContent>
     </Dialog>
@@ -59,7 +59,7 @@ export function Products() {
         <select value={stock} onChange={(e) => { setStock(e.target.value); setPage(1); }} className="input !w-auto" data-testid="product-stock-filter"><option value="">All stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select>
       </div>
       {sel.length > 0 && mgr && <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-[#fff1d6] p-3 text-sm" data-testid="bulk-edit-bar"><b>{sel.length} selected</b>
-        <input value={pct} onChange={(e) => setPct(e.target.value)} placeholder="Price Â±%" className="input !w-28 !py-1.5" data-testid="bulk-price-pct" /><button onClick={() => bulk({ price_change_pct: Number(pct) })} className="btn-secondary !py-1.5" data-testid="bulk-price-apply">Apply %</button>
+        <input value={pct} onChange={(e) => setPct(e.target.value)} placeholder="Price ±%" className="input !w-28 !py-1.5" data-testid="bulk-price-pct" /><button onClick={() => bulk({ price_change_pct: Number(pct) })} className="btn-secondary !py-1.5" data-testid="bulk-price-apply">Apply %</button>
         <button onClick={() => bulk({ set: { is_deal: true } })} className="btn-outline !py-1.5">Mark deal</button><button onClick={() => bulk({ set: { is_deal: false } })} className="btn-outline !py-1.5">Remove deal</button>
         <button onClick={() => bulk({ set: { active: false } })} className="btn-outline !py-1.5">Hide</button><button onClick={() => bulk({ set: { active: true } })} className="btn-outline !py-1.5">Show</button></div>}
       <div className="card overflow-x-auto"><table className="admin-table"><thead><tr><th><input type="checkbox" onChange={(e) => setSel(e.target.checked ? d.items.map((p) => p.id) : [])} /></th><th>Product</th><th>SKU</th><th>Category</th><th>Cost</th><th>Price</th><th>MRP</th><th>Stock</th><th>Location</th><th /></tr></thead>
@@ -79,17 +79,22 @@ export function Products() {
   );
 }
 
-const EMPTY = { name: "", name_mr: "", category: "sofa", brand: "", material: "", color: "", room: "", description: "", description_mr: "", images: [], video: "", variants: [], sku: "", barcode: "",
+const EMPTY = { name: "", name_mr: "", category: "", brand: "", material: "", color: "", room: "", description: "", description_mr: "", images: [], video: "", variants: [], sku: "", barcode: "",
   purchase_price: 0, price: "", mrp: "", gst: 18, stock: 0, reorder_level: 5, supplier: "", location: "", dimensions: "", weight: "", specs: {}, warranty: "1 Year", assembly: "free_installation", delivery_days: 5, is_deal: false, active: true };
 
 export function ProductForm() {
-  const { settings, categories } = useApp();
+  const { categories } = useApp();
   const { id } = useParams();
   const nav = useNavigate();
   const [f, setF] = useState(id ? null : EMPTY);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (id) api.get(`/admin/products/${id}`).then((r) => setF(r.data)); }, [id]);
+  useEffect(() => {
+    if (!id && categories.length && !categories.some((c) => c.slug === f?.category)) {
+      setF((current) => current ? { ...current, category: categories[0].slug } : current);
+    }
+  }, [id, categories, f?.category]);
   if (!f) return <div className="skeleton h-96" />;
   const set = (k, v) => setF({ ...f, [k]: v });
   const upload = async (files) => {
@@ -110,24 +115,23 @@ export function ProductForm() {
       <PageHead title={id ? "Edit product" : "Add product"}><button onClick={() => nav(-1)} className="btn-outline">Cancel</button><button disabled={busy} onClick={save} className="btn-primary" data-testid="pf-save-btn">Save product</button></PageHead>
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="card space-y-4 p-5 lg:col-span-2">
-          <div className="grid gap-3 sm:grid-cols-2">{inp("name", "Name (English)")}{inp("name_mr", "à¤¨à¤¾à¤µ (à¤®à¤°à¤¾à¤ à¥€)")}
-            <div><label className="label">Category</label><select value={f.category} onChange={(e) => set("category", e.target.value)} className="input" data-testid="pf-category">{categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></div>
+          <div className="grid gap-3 sm:grid-cols-2">{inp("name", "Name (English)")}{inp("name_mr", "नाव (मराठी)")}
+            <div><label className="label">Category</label><select value={f.category || categories[0]?.slug || ""} onChange={(e) => set("category", e.target.value)} className="input" data-testid="pf-category"><option value="" disabled>{categories.length ? "Choose a category" : "Loading categories..."}</option>{categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}{f.category && !categories.some((c) => c.slug === f.category) && <option value={f.category}>{f.category}</option>}</select></div>
             {inp("brand", "Brand")}{inp("material", "Material")}{inp("color", "Colour")}{inp("dimensions", "Dimensions")}{inp("weight", "Weight")}{inp("warranty", "Warranty")}
             <div><label className="label">Assembly</label><select value={f.assembly} onChange={(e) => set("assembly", e.target.value)} className="input" data-testid="pf-assembly"><option value="free_installation">Free installation</option><option value="diy">DIY</option></select></div>
             {inp("video", "Video embed URL (YouTube embed)")}{inp("delivery_days", "Delivery days", "number")}</div>
           <div><label className="label">Description</label><textarea value={f.description} onChange={(e) => set("description", e.target.value)} className="input min-h-[90px]" data-testid="pf-description" /></div>
-          <div><label className="label">à¤µà¤°à¥à¤£à¤¨ (à¤®à¤°à¤¾à¤ à¥€)</label><textarea value={f.description_mr} onChange={(e) => set("description_mr", e.target.value)} className="input min-h-[70px]" /></div>
+          <div><label className="label">वर्णन (मराठी)</label><textarea value={f.description_mr} onChange={(e) => set("description_mr", e.target.value)} className="input min-h-[70px]" /></div>
           <div><label className="label">Images</label><div className="flex flex-wrap gap-2">{f.images.map((u, i) => (
             <div key={u + i} className="relative"><img src={img(u)} alt="" className="h-20 w-20 rounded-xl object-cover" />{i === 0 && <span className="badge-deal absolute bottom-1 left-1 !text-[9px]">Main</span>}
               <button onClick={() => set("images", f.images.filter((_, k) => k !== i))} className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white" data-testid={`pf-remove-img-${i}`}><X size={12} /></button>
               {i > 0 && <button onClick={() => { const n = [...f.images]; [n[0], n[i]] = [n[i], n[0]]; set("images", n); }} className="absolute bottom-1 right-1 rounded bg-white/90 px-1 text-[9px]">Main</button>}</div>))}
             <label className="grid h-20 w-20 cursor-pointer place-items-center rounded-xl border-2 border-dashed text-gray-400" title="Upload image to local storage"><Upload /><input type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} data-testid="pf-image-upload" /></label></div>
-            {!settings.upload_enabled && <p className="mt-1 text-xs text-amber-700">Image upload needs Cloudinary/S3 (Admin â€º Integrations). Paste image URLs below meanwhile.</p>}
             <div className="mt-2 flex gap-2"><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="or paste image URL" className="input" data-testid="pf-image-url" /><button onClick={() => { if (url) { set("images", [...f.images, url]); setUrl(""); } }} className="btn-outline" data-testid="pf-image-url-add">Add</button></div></div>
           <div><label className="label">Variants (colour / material / size)</label>{f.variants.map((v, i) => (
             <div key={i} className="mb-2 flex gap-2"><select value={v.type} onChange={(e) => set("variants", f.variants.map((x, k) => (k === i ? { ...x, type: e.target.value } : x)))} className="input !w-32"><option>size</option><option>colour</option><option>material</option></select>
               <input value={v.value} placeholder="Value" onChange={(e) => set("variants", f.variants.map((x, k) => (k === i ? { ...x, value: e.target.value } : x)))} className="input" />
-              <input value={v.price_delta} type="number" placeholder="+â‚¹" onChange={(e) => set("variants", f.variants.map((x, k) => (k === i ? { ...x, price_delta: e.target.value } : x)))} className="input !w-28" />
+              <input value={v.price_delta} type="number" placeholder="+₹" onChange={(e) => set("variants", f.variants.map((x, k) => (k === i ? { ...x, price_delta: e.target.value } : x)))} className="input !w-28" />
               <button onClick={() => set("variants", f.variants.filter((_, k) => k !== i))} className="text-red-500"><Trash2 size={16} /></button></div>))}
             <button onClick={() => set("variants", [...f.variants, { type: "size", value: "", price_delta: 0 }])} className="btn-ghost !px-2 text-xs" data-testid="pf-add-variant">+ Add variant</button></div>
           <div><label className="label">Specifications</label>{specs.map(([k, v], i) => (

@@ -35,7 +35,15 @@ export function AppProvider({ children }) {
   }, []);
 
   const refreshCategories = useCallback(async () => {
-    try { const { data } = await api.get("/categories/options"); setCategories(data); } catch { /* retain last successful list */ }
+    try {
+      const { data } = await api.get("/categories/options");
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      try {
+        const { data } = await api.get("/categories");
+        setCategories(Array.isArray(data) ? data : []);
+      } catch { /* retain the last successful list */ }
+    }
   }, []);
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);

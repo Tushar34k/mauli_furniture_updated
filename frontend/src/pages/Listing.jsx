@@ -25,10 +25,10 @@ function Filters({ params, set, facets }) {
           <input className="input" type="number" placeholder="Max" defaultValue={params.get("max_price") || ""} onBlur={(e) => set("max_price", e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} data-testid="filter-max-price" /></div></div>
       {[["material", t("material")], ["color", t("color")], ["brand", t("brand")]].map(([k, label]) => (
         <Group key={k} title={label}>{(facets[k] || []).map((v) => <Chip key={v} id={`filter-${k}-${v}`} on={has(k, v)} onClick={() => multi(k, v)}>{v}</Chip>)}</Group>))}
-      <Group title={t("rating")}>{[4, 3].map((r) => <Chip key={r} id={`filter-rating-${r}`} on={params.get("rating") === String(r)} onClick={() => set("rating", params.get("rating") === String(r) ? "" : String(r))}>{r}â˜… +</Chip>)}</Group>
+      <Group title={t("rating")}>{[4, 3].map((r) => <Chip key={r} id={`filter-rating-${r}`} on={params.get("rating") === String(r)} onClick={() => set("rating", params.get("rating") === String(r) ? "" : String(r))}>{r}★ +</Chip>)}</Group>
       <Group title={t("discount")}>{[10, 25, 40].map((r) => <Chip key={r} id={`filter-discount-${r}`} on={params.get("discount") === String(r)} onClick={() => set("discount", params.get("discount") === String(r) ? "" : String(r))}>{r}%+</Chip>)}</Group>
       <Group title={t("availability")}><Chip id="filter-in-stock" on={params.get("in_stock") === "1"} onClick={() => set("in_stock", params.get("in_stock") === "1" ? "" : "1")}>{t("in_stock")}</Chip></Group>
-      <Group title={t("delivery_time")}>{[2, 3, 5].map((d) => <Chip key={d} id={`filter-delivery-${d}`} on={params.get("delivery_days") === String(d)} onClick={() => set("delivery_days", params.get("delivery_days") === String(d) ? "" : String(d))}>â‰¤ {d} days</Chip>)}</Group>
+      <Group title={t("delivery_time")}>{[2, 3, 5].map((d) => <Chip key={d} id={`filter-delivery-${d}`} on={params.get("delivery_days") === String(d)} onClick={() => set("delivery_days", params.get("delivery_days") === String(d) ? "" : String(d))}>≤ {d} days</Chip>)}</Group>
     </div>
   );
 }
