@@ -15,6 +15,7 @@ export function AppProvider({ children }) {
   const [lang, setLang] = usePersist("mfm_lang", "mr");
   const [user, setUser] = useState(undefined);
   const [settings, setSettings] = useState({});
+  const [categories, setCategories] = useState([]);
   const [cart, setCart] = usePersist("mfm_cart", []);
   const [saved, setSaved] = usePersist("mfm_saved", []);
   const [compare, setCompare] = usePersist("mfm_compare", []);
@@ -33,12 +34,17 @@ export function AppProvider({ children }) {
     } catch { localStorage.removeItem("mfm_token"); setUser(null); }
   }, []);
 
+  const refreshCategories = useCallback(async () => {
+    try { const { data } = await api.get("/categories/options"); setCategories(data); } catch { /* retain last successful list */ }
+  }, []);
+
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   useEffect(() => {
     api.get("/settings/public").then((r) => setSettings(r.data)).catch(() => {});
+    refreshCategories();
     if (window.location.hash.includes("session_id=")) { setUser(null); return; }
     refreshMe();
-  }, [refreshMe]);
+  }, [refreshMe, refreshCategories]);
 
   const login = (token, u) => { localStorage.setItem("mfm_token", token); setUser(u); setWish(u.wishlist || []); };
   const logout = () => { localStorage.removeItem("mfm_token"); setUser(null); setWish([]); };
@@ -72,11 +78,11 @@ export function AppProvider({ children }) {
   const addRecent = useCallback((p) => setRecent((r) => [p.id, ...r.filter((x) => x !== p.id)].slice(0, 12)), [setRecent]);
 
   const value = useMemo(() => ({
-    lang, setLang, t, L, user, setUser, login, logout, refreshMe, settings, setSettings,
+    lang, setLang, t, L, user, setUser, login, logout, refreshMe, settings, setSettings, categories, refreshCategories,
     cart, setCart, addToCart, setQty, removeItem, saved, saveForLater, moveToCart,
     wishlist, toggleWish, compare, setCompare, toggleCompare, recent, addRecent,
     cartCount: cart.reduce((a, b) => a + b.qty, 0),
-  }), [lang, t, L, user, settings, cart, saved, wishlist, compare, recent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), [lang, t, L, user, settings, categories, refreshCategories, cart, saved, wishlist, compare, recent]); // eslint-disable-line react-hooks/exhaustive-deps
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

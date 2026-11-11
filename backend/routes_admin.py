@@ -547,13 +547,18 @@ async def crud_list(col: str, u=Depends(ALL)):
 @router.post("/c/{col}")
 async def crud_create(col: str, body: dict, u=Depends(MGR)):
     d = {"id": uid(), "created_at": now(), **clean_doc(col, body)}
+    if col == "categories" and not d.get("slug"):
+        d["slug"] = slugify(d.get("name", "")) or uid()
     await db[col].insert_one(dict(d))
     return d
 
 
 @router.put("/c/{col}/{did}")
 async def crud_update(col: str, did: str, body: dict, u=Depends(MGR)):
-    await db[col].update_one({"id": did}, {"$set": clean_doc(col, body)})
+    d = clean_doc(col, body)
+    if col == "categories" and not d.get("slug"):
+        d["slug"] = slugify(d.get("name", "")) or uid()
+    await db[col].update_one({"id": did}, {"$set": d})
     return await db[col].find_one({"id": did}, {"_id": 0})
 
 

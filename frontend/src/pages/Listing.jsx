@@ -6,10 +6,9 @@ import api from "@/lib/api";
 import { useApp, useTitle } from "@/lib/store";
 import { ProductCard, GridSkeleton, Empty, CardSkeleton } from "@/components/shop";
 
-const CATS = ["sofa", "bed", "dining", "wardrobe", "office", "storage", "mattress", "study-table", "decor", "outdoor"];
 
 function Filters({ params, set, facets }) {
-  const { t } = useApp();
+  const { t, categories } = useApp();
   const multi = (key, val) => {
     const cur = (params.get(key) || "").split(",").filter(Boolean);
     set(key, (cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val]).join(","));
@@ -20,22 +19,22 @@ function Filters({ params, set, facets }) {
   const has = (k, v) => (params.get(k) || "").split(",").includes(String(v));
   return (
     <div data-testid="filters-panel">
-      <Group title={t("categories")}>{CATS.map((c) => <Chip key={c} id={`filter-cat-${c}`} on={has("category", c)} onClick={() => multi("category", c)}>{t(`cat_${c}`)}</Chip>)}</Group>
+      <Group title={t("categories")}>{categories.map((c) => <Chip key={c.slug} id={`filter-cat-${c.slug}`} on={has("category", c.slug)} onClick={() => multi("category", c.slug)}>{c.name}</Chip>)}</Group>
       <div className="border-b py-4"><p className="label">{t("price")}</p>
         <div className="mt-2 flex gap-2"><input className="input" type="number" placeholder="Min" defaultValue={params.get("min_price") || ""} onBlur={(e) => set("min_price", e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} data-testid="filter-min-price" />
           <input className="input" type="number" placeholder="Max" defaultValue={params.get("max_price") || ""} onBlur={(e) => set("max_price", e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} data-testid="filter-max-price" /></div></div>
       {[["material", t("material")], ["color", t("color")], ["brand", t("brand")]].map(([k, label]) => (
         <Group key={k} title={label}>{(facets[k] || []).map((v) => <Chip key={v} id={`filter-${k}-${v}`} on={has(k, v)} onClick={() => multi(k, v)}>{v}</Chip>)}</Group>))}
-      <Group title={t("rating")}>{[4, 3].map((r) => <Chip key={r} id={`filter-rating-${r}`} on={params.get("rating") === String(r)} onClick={() => set("rating", params.get("rating") === String(r) ? "" : String(r))}>{r}★ +</Chip>)}</Group>
+      <Group title={t("rating")}>{[4, 3].map((r) => <Chip key={r} id={`filter-rating-${r}`} on={params.get("rating") === String(r)} onClick={() => set("rating", params.get("rating") === String(r) ? "" : String(r))}>{r}â˜… +</Chip>)}</Group>
       <Group title={t("discount")}>{[10, 25, 40].map((r) => <Chip key={r} id={`filter-discount-${r}`} on={params.get("discount") === String(r)} onClick={() => set("discount", params.get("discount") === String(r) ? "" : String(r))}>{r}%+</Chip>)}</Group>
       <Group title={t("availability")}><Chip id="filter-in-stock" on={params.get("in_stock") === "1"} onClick={() => set("in_stock", params.get("in_stock") === "1" ? "" : "1")}>{t("in_stock")}</Chip></Group>
-      <Group title={t("delivery_time")}>{[2, 3, 5].map((d) => <Chip key={d} id={`filter-delivery-${d}`} on={params.get("delivery_days") === String(d)} onClick={() => set("delivery_days", params.get("delivery_days") === String(d) ? "" : String(d))}>≤ {d} days</Chip>)}</Group>
+      <Group title={t("delivery_time")}>{[2, 3, 5].map((d) => <Chip key={d} id={`filter-delivery-${d}`} on={params.get("delivery_days") === String(d)} onClick={() => set("delivery_days", params.get("delivery_days") === String(d) ? "" : String(d))}>â‰¤ {d} days</Chip>)}</Group>
     </div>
   );
 }
 
 export default function Listing() {
-  const { t } = useApp();
+  const { t, categories } = useApp();
   const [params, setParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ total: 0, pages: 1, facets: {} });

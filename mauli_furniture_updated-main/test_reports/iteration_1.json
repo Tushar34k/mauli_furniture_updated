@@ -1,0 +1,71 @@
+{
+  "summary": "First full E2E run of Mauli Furniture Mall. Backend: 29 pytest checks covering public store, fuzzy search, pincodes, PWA files, coupons, auth/RBAC, delete account, order lifecycle (demo pay, invoice, cancel+restock, guest access by phone, unserviceable), admin status/assign/notes/packing slip/returns, product CRUD, stock adjust, POS, CSV template, coupon CRUD. 27 passed, 2 failed, and both failures are real business-logic bugs. Frontend: Playwright checks on desktop 1920 and mobile 390 for home (all sections, MR/EN toggle), search autosuggest + typo tolerance + recent searches, listing filters/sort/list view/infinite scroll (12 -> 44), PDP (gallery, variants, qty, pincode 411005/400001/110001, wishlist, compare, price alert, review, Q&A, FBT, buy now), cart (+/-, save for later, move to cart, remove, 4 coupons, pincode, breakdown), guest Razorpay demo checkout -> success page -> invoice -> cancel, logged-in COD checkout with a saved address, mobile pay-at-store checkout, OTP login, Google redirect, account tabs, address add/delete, delete account (9876500001), compare max 3, showroom, enquiry, blog, 6 legal pages, 404, admin role-based nav for all 4 roles, dashboard, product add with image upload/edit/bulk +10%/QR/template, bulk CSV upload (API), inventory SKU picker + Enter, stock in/out with the below-zero guard, movements, valuation, POS sale with stock reduction, admin orders (filters, sheet, status chain, assign, notes, payment, invoice/slip, return approve/refund), customer notes, coupon CRUD, reviews approve/reject, Q&A answer, enquiry status, broadcast + log, all 5 reports with Excel/PDF export, settings save + homepage section toggle shown on home, staff add/reset password, change password (reverted to Admin@123). Core flows work. 3 important backend bugs and several minor UX/i18n issues found.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/admin/orders/{oid}/status", "issue": "No status transition validation. A cancelled order (already restocked) can be set to shipped/delivered (reproduced: 200), which marks COD as paid while the stock stays restocked, so inventory and sales are corrupted. Delivered orders can also move back to 'placed'. Fix: reject any change once status is cancelled; allow forward-only FLOW transitions (or an explicit allowed map).", "priority": "HIGH"},
+      {"endpoint": "POST /api/admin/orders/{oid}/return/{action}", "issue": "Not idempotent. Calling 'approved' again restocks the items again each time (reproduced: stock +2 for 1 returned unit). Any action is allowed from any state (e.g. approved after refunded). Fix: restock only when the previous rr.status=='requested'; enforce requested->approved/rejected->refunded/replaced; the UI should disable the buttons once a final state is reached.", "priority": "HIGH"},
+      {"endpoint": "PUT /api/auth/me", "issue": "The demo customer (9999999999) cannot save the profile. The seeded email demo@maulifurniture.test is rejected by EmailStr (special-use TLD) and the raw pydantic message is shown in a toast. Fix: change the seed email domain (and the shop email info@maulifurniture.test) or relax validation; format 422 errors in a friendly way.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/enquiries, /api/upload, /api/admin/upload (core.save_upload)", "issue": "A corrupt or non-image file sent with an image/* content type returns 500 (PIL OSError). Wrap Image.open in try/except and return 400."},
+      {"endpoint": "GET /api/settings/public", "issue": "razorpay_enabled is true with placeholder keys, because 'rzp_test_placeholder'.replace('placeholder','') is truthy. Use razorpay_keys(s)[0] for consistency."},
+      {"endpoint": "POST /api/orders", "issue": "The stock check followed by $inc is not atomic, so concurrent orders can oversell (use the conditional find_one_and_update {stock:{$gte:qty}}). Razorpay orders reduce stock before payment, and abandoned unpaid orders never release it. The per-pincode 'cod' flag is not enforced (code review)."},
+      {"endpoint": "POST /api/cart/price", "issue": "For an unserviceable pincode (110001) with subtotal >= 10000, delivery=0 is returned and the cart shows 'Free delivery'. It should not show free delivery when the pincode is not serviceable."},
+      {"endpoint": "POST /api/products/{pid}/reviews", "issue": "The same user can submit unlimited reviews for the same product; there is no verified-purchase check."},
+      {"endpoint": "GET /api/admin/notification-logs", "issue": "The OTP SMS text (with the OTP) is stored and visible to managers. Mask it in production."},
+      {"endpoint": "GET /api/admin/dashboard, /api/admin/reports/*", "issue": "Day boundaries use UTC rather than IST (Asia/Kolkata). Unpaid razorpay-pending and refunded orders are counted in sales."},
+      {"endpoint": "PUT /api/admin/orders/{oid}", "issue": "No 404 for an unknown id; payment_status is not validated against the allowed values."},
+      {"endpoint": "routes_orders.adjust_stock", "issue": "'sold' is not decremented when an order is cancelled or returned (mtype 'return'). The movement note duplicates the ref ('Cancel MFM25013 MFM25013')."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin Order sheet - Return box", "issue": "Approved/Rejected/Replaced/Refunded buttons stay active after a final state, which triggers the double-restock backend bug", "selector": "[data-testid^=return-]", "priority": "HIGH"},
+      {"component": "Admin Order sheet - status chips", "issue": "Backward or invalid transitions (e.g. Placed after Delivered) can be clicked", "selector": "[data-testid^=set-status-]", "priority": "MEDIUM"},
+      {"component": "Listing price filter", "issue": "Min/Max apply only onBlur; pressing Enter does nothing", "selector": "[data-testid=filter-max-price]", "priority": "LOW"},
+      {"component": "Order detail after cancel", "issue": "The 'Order placed successfully!' banner still shows after cancelling (?new=1)", "selector": "[data-testid=order-success]", "priority": "LOW"},
+      {"component": "FBT add all", "issue": "Adds the main product with an empty variant, creating a duplicate cart line next to the variant-selected line", "selector": "[data-testid=fbt-add-all]", "priority": "LOW"},
+      {"component": "Logout", "issue": "Logout from /account lands on /login?next=/account instead of home", "selector": "[data-testid=logout-btn]", "priority": "LOW"},
+      {"component": "Admin route guard", "issue": "Delivery user opening /admin/reports directly sees the page shell with 'Permission denied' instead of a redirect", "selector": "[data-testid=admin-reports]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Account profile save (demo customer)", "issue": "Save fails with the raw pydantic email error (backend seed email)", "affected_selectors": ["[data-testid=profile-save-btn]"]}
+    ],
+    "design_issues": [
+      {"screen": "Checkout", "issues": ["The delivery date uses a native <input type=date> (mm/dd/yyyy) instead of the shadcn Calendar/Popover"]},
+      {"screen": "Mobile 390px", "issues": ["The WhatsApp FAB overlaps the order summary total on checkout and the last category icon on home; add bottom padding or move the FAB above the bottom nav/content"]},
+      {"screen": "Marathi mode i18n gaps", "issues": ["Banner CTA 'Shop now'", "Listing category chips show raw slugs (sofa, study-table) and the listing title 'Sofa'", "Toasts 'Question submitted' / 'Review submitted for approval'", "Order payment status shows raw 'refund_pending'", "Footer category links in English", "'POPULAR' on /search"]},
+      {"screen": "Admin", "issues": ["The order timeline shows Marathi labels inside the English admin panel (it uses the storefront language)", "Staff reset password uses window.prompt", "The coupon 'type' field is free text; use a select (percent/flat/shipping)"]},
+      {"screen": "Legal /page/privacy", "issues": ["Placeholder text 'Last updated: [DATE]'"]},
+      {"screen": "Listing", "issues": ["Some products share the same image (Royal Teak sofa and Shivneri recliner)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_mauli_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Add status transition validation in PUT /api/admin/orders/{oid}/status (block changes on cancelled orders, forward-only flow)",
+    "Make return actions state-machine based and idempotent (restock once); disable the return buttons in the UI after the final state",
+    "Fix the demo customer seed email (.test TLD rejected by EmailStr) or relax ProfileUpdate.email validation; show friendly 422 messages",
+    "Return 400 instead of 500 for invalid image uploads in save_upload",
+    "Fix razorpay_enabled in /api/settings/public to use razorpay_keys()",
+    "Do not show 'Free delivery' for unserviceable pincodes in /cart/price",
+    "Replace the native date input on checkout with the shadcn Calendar; fix WhatsApp FAB overlap on mobile",
+    "Fill the Marathi translation gaps listed in design_issues"
+  ],
+  "critical_code_review_comments": [
+    "create_order: non-atomic stock check/decrement (oversell race); use find_one_and_update with {stock: {$gte: qty}}",
+    "Razorpay orders hold stock indefinitely when unpaid; add expiry or release on payment failure",
+    "Pincode 'cod' flag not enforced at order time",
+    "routes_admin.py is 668 lines, close to the 700-line limit; consider splitting orders/products/crud",
+    "patch_order lacks 404 and enum validation for payment_status",
+    "Reports/dashboard use UTC dates; the store operates in IST",
+    "The notification log stores OTPs in plain text"
+  ],
+  "updated_files": ["/app/backend/tests/test_mauli_api.py"],
+  "success_rate": {"backend": "93% (27/29; 2 failures are real bugs)", "frontend": "~92% (all core flows work; profile save for the demo customer fails; minor UX/i18n issues)"},
+  "test_credentials": "Used /app/memory/test_credentials.md as-is. Owner password changed and reverted to Admin@123 (verified login). Created staff test_staff_ui@mauli.com with password TestPass@123 (no delete endpoint, so disable or remove manually).",
+  "seed_data_creation": "Created TEST_ orders (MFM25001-MFM25016 range, guest phones 9876500002/9876500004, demo customer), TEST_ enquiries, TEST_ question (answered, public on the Royal Teak sofa), TEST_ reviews (one 'TEST_ review pending check' APPROVED and now public on the Royal Teak sofa, one rejected, one 'TEST_ UI review' pending on Milano sofa), a TEST_ broadcast notification, and an admin note on the demo customer. TEST products TEST-UI-001, TEST-CSV-001, TEST-PY-001 and coupons TESTUI15/TESTPY5 were deleted. Royal Teak sofa stock corrected back to 10 after the double-restock bug. Deleted account 9876500001; new customer 9876500005 (TEST_New) created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=<url> python -m pytest tests/test_mauli_api.py -n0 (pytest.ini adds xdist flags; -n0 works). test_admin_status_return_flow and test_cancelled_order_cannot_be_reopened should pass after the fixes. Note: each run of the return test changes sofa stock if the double-restock bug exists. Admin delivery user only sees assigned orders (404 otherwise, by design). Storefront default language is Marathi (lang-toggle). Filter chips exist twice in the DOM (desktop sidebar + mobile sheet), so use :visible. Not tested: camera barcode scanning, real Razorpay, actual Google OAuth completion, push notifications.",
+  "rca of the issue": "1) set_status only checks that body.status is in FLOW+cancelled; it never looks at o['status'], so cancelled->delivered passes and the delivered branch sets payment_status=paid on a restocked order. 2) handle_return restocks whenever action=='approved' and type=='return', with no check of the previous rr.status. 3) seed.py inserts email 'demo@maulifurniture.test'. Account.jsx sends that email back on save, and pydantic EmailStr (email-validator) rejects special-use TLDs, so PUT /auth/me returns 422."
+}

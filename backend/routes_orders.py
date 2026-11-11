@@ -278,12 +278,18 @@ async def cancel_order(oid: str, request: Request, phone: Optional[str] = None):
 
 
 async def cancel_and_restock(o, note, by):
-    for it in o["items"]:
-        await adjust_stock(it["product_id"], it["qty"], "return", f"Cancel {o['order_no']}", by, o["order_no"])
+    # Claim the transition first so concurrent customer/admin requests cannot restock twice.
     upd = {"status": "cancelled"}
     if o["payment_status"] == "paid":
         upd["payment_status"] = "refund_pending"
-    await db.orders.update_one({"id": o["id"]}, {"$set": upd, "$push": {"timeline": {"status": "cancelled", "at": now(), "note": note}}})
+    claimed = await db.orders.update_one(
+        {"id": o["id"], "status": {"$in": ["placed", "confirmed", "packed", "shipped", "out_for_delivery"]}},
+        {"$set": upd, "$push": {"timeline": {"status": "cancelled", "at": now(), "note": note, "by": by}}},
+    )
+    if not claimed.modified_count:
+        raise HTTPException(400, "Order is already cancelled")
+    for it in o["items"]:
+        await adjust_stock(it["product_id"], it["qty"], "return", f"Cancel {o['order_no']}", by, o["order_no"])
     await notify.order_update(o, "cancelled")
 
 

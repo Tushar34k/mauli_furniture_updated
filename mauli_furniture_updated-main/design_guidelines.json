@@ -1,0 +1,89 @@
+{
+  "theme": "light",
+  "typography": {
+    "headings": {
+      "font_family": "Poppins (English) / Noto Sans Devanagari (Marathi)",
+      "weights": ["600", "700"],
+      "color": "#7A1F1F"
+    },
+    "body": {
+      "font_family": "Poppins (English) / Noto Sans Devanagari (Marathi)",
+      "weights": ["400", "500"],
+      "color": "#2B2B2B"
+    }
+  },
+  "colors": {
+    "primary": "#E8671B",
+    "secondary": "#7A1F1F",
+    "accent": "#F5B800",
+    "background": "#FFFAF5",
+    "text": "#2B2B2B",
+    "surface": "#FFFFFF",
+    "border": "#E5E5E5"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#E8671B] text-white hover:bg-[#7A1F1F] rounded-full transition-colors",
+      "secondary": "bg-[#7A1F1F] text-white hover:bg-[#E8671B] rounded-full transition-colors",
+      "floating_action": "WhatsApp button fixed bottom-right, distinct green or brand color with shadow-lg z-50"
+    },
+    "cards": {
+      "style": "bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#E5E5E5]/50 overflow-hidden"
+    },
+    "header": {
+      "style": "sticky top-0 z-50 bg-[#FFFAF5]/90 backdrop-blur-xl border-b border-[#E5E5E5]",
+      "logo": "top-left placement"
+    },
+    "bottom_nav": {
+      "style": "fixed bottom-0 w-full bg-white border-t border-[#E5E5E5] flex justify-around py-3 z-50 md:hidden"
+    }
+  },
+  "layouts": {
+    "mobile_first": true,
+    "spacing": "Generous whitespace (p-4 to p-8), dense for dashboard",
+    "grid": "Bento-style or balanced grid for categories and 'Shop by Room'"
+  },
+  "visual_enhancers": {
+    "loaders": "Skeleton loaders for products and images",
+    "shadows": "Soft ambient shadows for depth",
+    "radius": "rounded-2xl for major containers, rounded-full for buttons/badges",
+    "transitions": "Smooth micro-interactions on hover and active states"
+  },
+  "pages": {
+    "storefront": {
+      "features": ["Banner carousel", "Category icons", "Deals of the Day with countdown", "New Arrivals", "Best Sellers", "Shop by Room", "Shop by Price", "Reviews", "WhatsApp floating button"]
+    },
+    "product_detail": {
+      "features": ["Large product photography gallery", "Sticky Add to Cart", "Price with Accent yellow badge"]
+    },
+    "admin_dashboard": {
+      "features": ["Inventory table", "Orders", "POS", "Reports", "Dense, clean table layouts with standard shadcn components"]
+    }
+  },
+  "image_urls": {
+    "banners": [
+      "https://images.pexels.com/photos/8082229/pexels-photo-8082229.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "https://images.pexels.com/photos/39829559/pexels-photo-39829559.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    ],
+    "categories": [
+      "https://images.unsplash.com/photo-1633505899118-4ca6bd143043?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHxwcmVtaXVtJTIwZnVybml0dXJlJTIwbGl2aW5nJTIwcm9vbXxlbnwwfHx8fDE3OTIyMzI2OTd8MA&ixlib=rb-4.1.0&q=85",
+      "https://images.pexels.com/photos/7538106/pexels-photo-7538106.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "https://images.unsplash.com/photo-1631889993877-71e193bf79b8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxiZWRyb29tJTIwZnVybml0dXJlJTIwd2FyZHJvYmV8ZW58MHx8fHwxNzkyMjMyNjk3fDA&ixlib=rb-4.1.0&q=85"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Ensure all interactive elements have data-testid attributes.",
+    "Do NOT use completely transparent backgrounds for headers or overlays.",
+    "Implement language toggle for Marathi/English (default Marathi).",
+    "Use lucide-react for icons.",
+    "Use sonner for toast notifications.",
+    "Storefront should feel premium e-commerce (like Pepperfry), Admin should be dense and functional."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not apply universal transitions (transition: all).",
+    "Do not center align the app container text.",
+    "Create depth with layered z-index hierarchy and glass-morphism.",
+    "Avoid generic AI slop aesthetics; inject brand personality into spacing and typography.",
+    "Never use AI assistant emojis for icons."
+  ]
+}

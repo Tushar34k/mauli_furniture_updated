@@ -54,6 +54,11 @@ async def categories():
     return cats
 
 
+@router.get("/categories/options")
+async def category_options():
+    return await db.categories.find({"active": True}, {"_id": 0, "slug": 1, "name": 1, "name_mr": 1}).sort("sort", 1).to_list(100)
+
+
 @router.get("/brands")
 async def brands():
     return await db.brands.find({"active": True}, {"_id": 0}).to_list(200)

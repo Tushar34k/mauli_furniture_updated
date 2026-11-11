@@ -40,9 +40,8 @@ def storage_provider():
         return "cloudinary"
     if b == "s3" and E("S3_BUCKET") and E("AWS_ACCESS_KEY_ID") and E("AWS_SECRET_ACCESS_KEY"):
         return "s3"
-    if b == "local" and E("APP_ENV") == "development":
-        return "local"
-    return None
+    # Local uploads are the zero-configuration default; cloud providers remain optional.
+    return "local"
 
 
 def fcm_ready():

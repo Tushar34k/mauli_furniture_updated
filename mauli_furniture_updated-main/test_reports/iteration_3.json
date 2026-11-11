@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 3 checked the fixes made after iteration 2. Backend: 8 new tests in test_iter3_fixes.py, 7 pass. The 1 failure is the price<=mrp validation, which was an iteration-2 action item but not on this iteration's list. The full regression test_mauli_prod.py passes 28/28, including the 2 that failed in iteration 2 (razorpay stock leak, page=abc). Frontend (Playwright, 1920x1080): /, /enquiry, /product/<slug>, /admin/login, /login and /admin all load with no webpack/eslint overlay and no page errors. The Extras.jsx rules-of-hooks error (seen earlier in the frontend log) is gone: hooks are now unconditional and the latest compile shows warnings only. Admin order sheet for a cancelled order shows the order-cancelled box plus timeline lines (Placed/Confirmed/Cancelled with note and by). Integrations labels are correct and the export buttons read '... .xlsx'. Login shows the otp-not-configured message. The top bar has no secure-payment text. footer-logo and header-logo testids are present. No product card shows '0 ★'. The emi-info box is hidden.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST/PUT /api/admin/products", "issue": "No price <= mrp validation: a product with price 2000 and mrp 1000 is accepted (200). Seed product 'Royal Teak 3 Seater Sofa' still has price 813098 vs MRP 49999, so the PDP shows '-1526% सूट'."},
+      {"endpoint": "routes_orders.adjust_stock", "issue": "The 'sold' counter only changes on mtype=='sale'. Cancel/return/rollback movements (type 'return') never decrement 'sold', so popularity sorting inflates after cancellations."},
+      {"endpoint": "routes_admin.stock_adjust / pos_sale", "issue": "Non-atomic pre-checks are kept (harmless, since the atomic adjust_stock guard handles races). POS 400 message may be 'X just went out of stock' or 'Only N in stock', depending on timing."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PDP feature tiles", "issues": ["The 'EMI & Offers' / 'EMI व ऑफर्स' tile (Product.jsx line 143, CreditCard icon) always shows, even when Razorpay is not configured. Only the emi-info box is gated. Gate this tile on settings.razorpay_enabled too."]},
+      {"screen": "Home trust strip", "issues": ["Home.jsx line 130 always shows the 'secure_pay' item (Secure payments / सुरक्षित पेमेंट), even though the top bar is now gated on razorpay_enabled."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter3_fixes.py", "/app/backend/tests/test_mauli_prod.py", "/app/backend/tests/iter3_ui_setup.py", "/app/test_reports/pytest/pytest_iter3.xml"],
+  "action_items": [
+    "Add validation price <= mrp in admin product create/update and bulk upload, and fix the Royal Teak 3 Seater Sofa price (813098 > MRP 49999)",
+    "Gate the PDP 'EMI & Offers' tile and the Home 'Secure payments' trust item on settings.razorpay_enabled",
+    "Optional: decrement 'sold' when stock is returned for cancel/return/rollback",
+    "Optional: 5 orphan stock_movements from older runs (name TEST_Chair Pytest / TEST_UI Stool / TEST_CSV Table, created 2026-10-17, products already deleted) remain. Not created in this iteration and not deleted by tester."
+  ],
+  "critical_code_review_comments": [
+    "create_order now validates razorpay keys before reserve_lines and rolls back on rzp_order failure. Verified: no stock change and no movement on a 400.",
+    "reserve_lines/adjust_stock use a conditional $gte update, so concurrent POS sales (4 threads on 1 unit) gave exactly 1 success and 3 x 400, with stock 0. Concurrent out/damage (4 x qty 2 on stock 3) gave 1 success and 3 x 400, with stock 1.",
+    "patch_order: staff gets 403 on payment_status (DB unchanged), staff can still edit notes, manager and owner get 200, unknown id gets 404.",
+    "routes_admin.py is 719 lines, above the 700-line guideline. Consider splitting it (POS, exports, CRUD)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_fixes.py", "/app/backend/tests/iter3_ui_setup.py"],
+  "success_rate": {"backend": "97% (35/36; only the price>mrp validation fails)", "frontend": "95% (all requested checks pass except the remaining EMI tile; also a minor Home secure-pay item)"},
+  "test_credentials": "Owner tusharkokane366@gmail.com / TestOwner#2026 (unchanged, login verified at end). Temporary TEST staff/manager users were created and deleted.",
+  "seed_data_creation": "None kept. All TEST_ products, orders, users and stock movements created in this run were deleted by id. Sample products were not sold.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_mauli_prod.py (xdist -n 2), and pytest tests/test_iter3_fixes.py -n 0. Wait about 60s between runs (rate limits: 20 orders/min/IP, 20 logins/min/IP). For UI: python tests/iter3_ui_setup.py setup creates a cancelled TEST order and writes /tmp/iter3_ui.json with the owner token. Put it in localStorage 'mfm_token', open /admin/orders?open=<oid>, then run teardown. test_price_gt_mrp is expected to fail until validation is added."
+}

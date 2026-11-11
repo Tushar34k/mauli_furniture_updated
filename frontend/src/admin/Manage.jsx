@@ -4,6 +4,7 @@ import { Plus, Trash2, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import api, { errMsg, img } from "@/lib/api";
 import { PageHead } from "@/admin/AdminApp";
+import { useApp } from "@/lib/store";
 
 const B = "bool", N = "number", T = "textarea", I = "image";
 const CFG = {
@@ -40,13 +41,14 @@ function Editor({ col, item, onClose, onSaved }) {
 }
 
 export function Manage() {
+  const { refreshCategories } = useApp();
   const [col, setCol] = useState("categories");
   const [rows, setRows] = useState([]);
   const [edit, setEdit] = useState(null);
-  const load = () => api.get(`/admin/c/${col}`).then((r) => setRows(r.data));
+  const load = () => api.get(`/admin/c/${col}`).then((r) => { setRows(r.data); if (col === "categories") refreshCategories(); });
   useEffect(() => { load(); }, [col]); // eslint-disable-line react-hooks/exhaustive-deps
   const cols = CFG[col].filter(([, , t]) => t !== T).slice(0, 6);
-  const del = async (id) => { if (window.confirm("Delete?")) { await api.delete(`/admin/c/${col}/${id}`); load(); } };
+  const del = async (id) => { if (window.confirm("Delete?")) { await api.delete(`/admin/c/${col}/${id}`); load(); if (col === "categories") refreshCategories(); } };
   return (
     <div data-testid="admin-manage">
       <PageHead title="Catalog & Store"><button onClick={() => setEdit(Object.fromEntries(CFG[col].map(([k, , t]) => [k, t === B ? true : ""])))} className="btn-primary" data-testid="crud-add-btn"><Plus size={16} />Add</button></PageHead>
@@ -55,7 +57,7 @@ export function Manage() {
       <div className="card overflow-x-auto"><table className="admin-table"><thead><tr>{cols.map(([k, l = k]) => <th key={k}>{l}</th>)}<th /></tr></thead>
         <tbody>{rows.map((r) => <tr key={r.id} data-testid={`crud-row-${r.id}`}>{cols.map(([k, , t]) => <td key={k}>{t === I ? <img src={img(r[k])} alt="" className="h-10 w-14 rounded object-cover" /> : t === B ? (r[k] ? "✓" : "—") : String(r[k] ?? "")}</td>)}
           <td className="whitespace-nowrap"><button onClick={() => setEdit(r)} className="px-2 text-xs font-semibold text-[#E8671B]" data-testid={`crud-edit-${r.id}`}>Edit</button><button onClick={() => del(r.id)} className="text-red-500"><Trash2 size={15} /></button></td></tr>)}</tbody></table></div>
-      {edit && <Editor col={col} item={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />}
+      {edit && <Editor col={col} item={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); if (col === "categories") refreshCategories(); }} />}
     </div>
   );
 }
